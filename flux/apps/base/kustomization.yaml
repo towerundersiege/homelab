@@ -1,8 +1,4 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - gitea.yaml
-  - vaultwarden.yaml
-  - syncthing.yaml
   - jellyfin.yaml
-  - media-vpn.yaml

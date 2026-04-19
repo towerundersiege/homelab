@@ -3,6 +3,15 @@
 }
 
 {{ pihole_local_domain }} {
-  tls internal
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
   reverse_proxy pihole:8080
+}
+
+{{ jellyfin_local_domain }} {
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
+  reverse_proxy http://{{ cilium_ingress_lb_ip }}:80
 }

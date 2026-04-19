@@ -3,6 +3,15 @@
 }
 
 pihole.towerundersiege.com {
-  tls internal
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
   reverse_proxy pihole:8080
+}
+
+jellyfin.towerundersiege.com {
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
+  reverse_proxy http://192.168.1.110:80
 }

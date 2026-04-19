@@ -12,6 +12,7 @@ services:
       FTLCONF_webserver_api_password: ${PIHOLE_WEB_PASSWORD}
       FTLCONF_dns_listeningMode: all
       FTLCONF_webserver_port: 8080o,[::]:8080o
+      FTLCONF_misc_etc_dnsmasq_d: "true"
     volumes:
       - /srv/shared/vm/penzance/config/pihole:/etc/pihole
       - /srv/shared/vm/penzance/config/pihole/dnsmasq.d:/etc/dnsmasq.d
