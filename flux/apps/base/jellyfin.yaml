@@ -24,6 +24,7 @@ spec:
               tag: "10.10.1"
     service:
       main:
+        controller: main
         ports:
           http:
             port: 8096
@@ -37,12 +38,22 @@ spec:
             paths:
               - path: /
                 pathType: Prefix
+                service:
+                  identifier: main
+                  port: http
     persistence:
       config:
         enabled: true
+        type: persistentVolumeClaim
+        accessMode: ReadWriteOnce
         storageClass: nfs-client
         size: 10Gi
+        globalMounts:
+          - path: /config
       media:
         enabled: true
-        type: hostPath
-        hostPath: /srv/shared/media
+        type: nfs
+        server: 192.168.1.100
+        path: /media
+        globalMounts:
+          - path: /media
