@@ -3,4 +3,4 @@ kind: IngressClass
 metadata:
   name: cilium
 spec:
-  controller: io.cilium/ingress-controller
+  controller: cilium.io/ingress-controller

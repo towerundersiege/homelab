@@ -12,6 +12,14 @@
     remote_src: true
     creates: /usr/local/bin/cilium
 
+- name: Check whether Cilium is already installed
+  ansible.builtin.command: kubectl get daemonset cilium -n kube-system
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: cilium_existing
+  changed_when: false
+  failed_when: cilium_existing.rc not in [0, 1]
+
 - name: Install Cilium into k3s
   ansible.builtin.command: >
     cilium install
@@ -26,7 +34,15 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   register: cilium_install
-  changed_when: "'already installed' not in cilium_install.stdout"
+  changed_when: true
+  when: cilium_existing.rc != 0
+
+- name: Wait for Cilium daemonset rollout
+  ansible.builtin.command: kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: cilium_rollout
+  changed_when: false
 
 - name: Render Cilium load balancer manifests
   ansible.builtin.template:

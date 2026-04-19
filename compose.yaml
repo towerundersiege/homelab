@@ -7,11 +7,11 @@ services:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
-    network_mode: host
     environment:
       TZ: Europe/London
       FTLCONF_webserver_api_password: ${PIHOLE_WEB_PASSWORD}
       FTLCONF_dns_listeningMode: all
+      FTLCONF_webserver_port: 8080o,[::]:8080o
     volumes:
       - /srv/shared/vm/penzance/config/pihole:/etc/pihole
       - /srv/shared/vm/penzance/config/pihole/dnsmasq.d:/etc/dnsmasq.d
@@ -19,6 +19,12 @@ services:
       - NET_ADMIN
       - SYS_TIME
       - SYS_NICE
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8080:8080/tcp"
+    networks:
+      - edge
 
   caddy:
     image: ghcr.io/caddybuilds/caddy-cloudflare:latest
@@ -36,8 +42,6 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /srv/shared/vm/penzance/config/caddy/data:/data
       - /srv/shared/vm/penzance/config/caddy/config:/config
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - edge
 

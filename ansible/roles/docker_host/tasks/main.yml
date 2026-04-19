@@ -37,6 +37,21 @@
     state: present
     update_cache: true
 
+- name: Ensure systemd-resolved drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Disable systemd-resolved DNS stub listener for Pi-hole
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/pihole.conf
+    mode: "0644"
+    content: |
+      [Resolve]
+      DNSStubListener=no
+  notify: Restart systemd-resolved
+
 - name: Create stack directories
   ansible.builtin.file:
     path: "{{ item }}"

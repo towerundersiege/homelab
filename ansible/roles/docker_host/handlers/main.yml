@@ -1,4 +1,9 @@
 ---
+- name: Restart systemd-resolved
+  ansible.builtin.service:
+    name: systemd-resolved
+    state: restarted
+
 - name: Restart caddy container
   community.docker.docker_container:
     name: caddy

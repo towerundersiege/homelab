@@ -43,8 +43,6 @@ pihole_dns_records:
     ip: 192.168.1.101
   - domain: lyonesse-cp-01.vm.towerundersiege.com
     ip: 192.168.1.102
-  - domain: lyonesse-w-01.vm.towerundersiege.com
-    ip: 192.168.1.103
   - domain: lyonesse-w-02.vm.towerundersiege.com
     ip: 192.168.1.104
   - domain: api.lyonesse.k8s.towerundersiege.com
@@ -76,7 +74,7 @@ cilium_loadbalancer_pool:
     stop: 192.168.1.119
 
 flux_namespace: flux-system
-flux_git_url: https://github.com/REPLACE_ME/k8s.git
+flux_git_url: https://github.com/towerundersiege/homelab.git
 flux_git_branch: main
 flux_cluster_path: ./flux/clusters/homelab
 

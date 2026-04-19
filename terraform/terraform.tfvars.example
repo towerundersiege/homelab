@@ -43,20 +43,6 @@ vm_definitions = {
       "ssh-ed25519 AAAA... lyonesse-cp-01-automation",
     ]
   }
-  lyonesse-w-01 = {
-    vm_id      = 112
-    role       = "k3s-worker"
-    ip_address = "192.168.1.62"
-    cidr       = 24
-    cpu_cores  = 2
-    memory_mb  = 1024
-    disk_gb    = 48
-    tags       = ["terraform", "k3s", "worker"]
-    ssh_public_keys = [
-      "ssh-ed25519 AAAA... lyonesse-w-01-ryan",
-      "ssh-ed25519 AAAA... lyonesse-w-01-automation",
-    ]
-  }
   lyonesse-w-02 = {
     vm_id      = 113
     role       = "k3s-worker"
