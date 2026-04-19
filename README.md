@@ -1,253 +1,338 @@
 # Homelab Platform
 
-This repository bootstraps a small Proxmox-backed homelab around one Debian utility VM (`penzance`) and a three-node `k3s` cluster. The intended outcome is:
+This repo manages the current `towerundersiege.com` homelab running on one Proxmox host and two active VMs:
 
-- `penzance`: Debian utility VM used for Pi-hole, Vault, and break-glass Docker workloads.
-- `lyonesse-cp-01`: control-plane node VM for the `lyonesse` cluster.
-- `lyonesse-w-01`: worker node VM for the `lyonesse` cluster.
-- `lyonesse-w-02`: worker node VM for the `lyonesse` cluster.
-- Shared storage on the Proxmox host backed by the DAS, pooled with `mergerfs` now and ready for `snapraid` later.
-- `Flux` for GitOps delivery into the cluster.
-- `Cilium` as the CNI and ingress/L2 load balancer.
-- `cloudflared` for public exposure of selected services.
-- Local-only ingress through the same `towerundersiege.com` zone, resolved internally by Pi-hole.
-- `ExternalDNS` to sync selected Kubernetes ingress and service hostnames into Pi-hole.
-- Platform services for metrics/logging, storage, secrets, and application workloads.
+- `cornwall.proxmox.towerundersiege.com` (`192.168.1.100`): the Proxmox host
+- `penzance.vm.towerundersiege.com` (`192.168.1.101`): Debian utility VM
+- `lyonesse-cp-01.vm.towerundersiege.com` (`192.168.1.102`): single-node `k3s` cluster control plane
 
-## Current Scope
+The cluster name is `lyonesse`. Right now it is intentionally a single-node cluster because the box is still memory-constrained until the RAM upgrade lands.
 
-This scaffold gives you:
+## Current State
 
-- A written target architecture and operating assumptions.
-- Terraform for four Proxmox VM resources.
-- Ansible playbooks and roles to:
-  - configure the Proxmox host storage pool and NFS export,
-  - install Docker services on `penzance`,
-  - bootstrap `k3s`,
-  - install `Cilium`,
-  - install `Flux`.
-- A Python Click CLI under `scripts/homelab` for secrets, SSH access, local kubeconfig management, cluster access, and deployment workflows.
-- A Flux repository structure for infrastructure and application Helm releases.
+- Proxmox host storage is pooled on `cornwall` with `mergerfs` and exported over NFS.
+- `penzance` mounts the shared storage at `/srv/shared`.
+- Shared storage is split into:
+  - `/srv/shared/vm/penzance`
+  - `/srv/shared/media`
+  - `/srv/shared/k8s/lyonesse`
+- `penzance` runs:
+  - Pi-hole
+  - Caddy
+  - cloudflared
+- `lyonesse` runs:
+  - `k3s`
+  - `Cilium`
+  - `Flux`
+  - `ExternalDNS` for Pi-hole
+  - `external-secrets`
+  - `nfs-subdir-external-provisioner`
+  - Jellyfin
 
-It does not yet give you a zero-touch production deployment. Some values are intentionally placeholders because they are environment-specific:
+## Topology
 
-- Proxmox API endpoint and token.
-- VM template IDs and storage names.
-- LAN CIDRs, node IPs, and DNS addresses.
-- Cloudflare tunnel credentials.
-- Vault initialization and unseal strategy.
-- Exact app storage sizes and media paths.
+### Proxmox
 
-## Design Decisions
+- Host: `cornwall`
+- IP: `192.168.1.100`
+- API endpoint: `https://192.168.1.100:8006/api2/json`
+- Node storage in use:
+  - `local`
+  - `local-lvm`
+- Debian cloud-init template ID:
+  - `9000`
 
-### 1. Debian first, NixOS later
+### Utility VM
 
-You mentioned NixOS for the `k3s` nodes. That can work, but combining `Terraform + Ansible + NixOS + k3s + Cilium + Flux + Vault` introduces two separate host configuration models before the baseline cluster exists.
+`penzance` is the utility edge VM and break-glass box.
 
-The scaffold here uses Debian 12 as the first implementation target for all four VMs. That is the shortest path to a working cluster. Once the platform is stable, the three `k3s` nodes can be rebuilt onto NixOS with either:
+- VMID: `100`
+- IP: `192.168.1.101`
+- CPU: `2`
+- Memory: `1024 MB`
+- Disk: `48 GB`
+- OS user for automation: `ansible`
+- Human user: `ryan`
 
-- Terraform unchanged and Ansible replaced for host config, or
-- Terraform unchanged and Nix used only inside the node images.
+It owns VM-specific state under:
 
-### 2. `penzance` stays outside the cluster
+- `/srv/shared/vm/penzance/config/pihole`
+- `/srv/shared/vm/penzance/config/caddy`
 
-`penzance` is kept as a conventional Debian/Docker utility host for:
+### Kubernetes
 
-- Pi-hole
-- Vault
-- ad hoc containers
-- break-glass access when the cluster is unhealthy
+`lyonesse` is the current cluster.
 
-That separation is deliberate. DNS and secrets remain available even if `k3s` is degraded.
+- Cluster name: `lyonesse`
+- API endpoint: `api.lyonesse.k8s.towerundersiege.com`
+- API IP: `192.168.1.102`
+- Ingress IP: `192.168.1.110`
 
-### 3. Shared storage via Proxmox host + NFS
+Current node list:
 
-The DAS is attached to the Proxmox host, so the cleanest first implementation is:
+- `lyonesse-cp-01`
+  - VMID: `111`
+  - IP: `192.168.1.102`
+  - CPU: `2`
+  - Memory: `4096 MB`
+  - Disk: `48 GB`
 
-1. mount individual disks on the Proxmox host,
-2. pool them with `mergerfs`,
-3. export a shared path over NFS,
-4. mount that NFS export in `penzance` and in the `k3s` nodes,
-5. use `nfs-subdir-external-provisioner` in Kubernetes for persistent volumes.
+The old worker definitions were removed from the active configuration. The repo currently models a single-node cluster on purpose.
 
-Later, when more disks are present, `snapraid` can be added on the Proxmox host without changing the cluster storage model.
+## DNS and Exposure
 
-This is also the preferred replacement for the current legacy setup where the 8 TB disk is attached directly to `penzance` and pooled inside the guest with `mergerfs`. The improved design is:
+Local DNS is handled by Pi-hole on `penzance`.
 
-1. keep physical disks attached to the Proxmox host,
-2. pool them once on the Proxmox host,
-3. export the pool over NFS,
-4. mount that export in guests,
-5. separate utility-host config, shared media, and k8s PVC data into different namespaces.
+Important local records:
 
-That gives you one storage control plane instead of hiding the main data disk behind a single VM.
+- `cornwall.proxmox.towerundersiege.com` -> `192.168.1.100`
+- `penzance.vm.towerundersiege.com` -> `192.168.1.101`
+- `lyonesse-cp-01.vm.towerundersiege.com` -> `192.168.1.102`
+- `api.lyonesse.k8s.towerundersiege.com` -> `192.168.1.102`
+- `ingress.lyonesse.k8s.towerundersiege.com` -> `192.168.1.110`
+- `pihole.towerundersiege.com` -> `192.168.1.101`
+- `jellyfin.towerundersiege.com` -> `192.168.1.110`
 
-The storage split in this repository is now:
+Exposure model:
 
-- `vm/penzance/*` for utility-host-specific config and state
-- `media/*` for cross-host media libraries
-- `k8s/lyonesse/*` for cluster-specific PVC-backed application data
-
-That avoids multiple hosts writing into the same application config tree while still allowing both `penzance` and `k8s` workloads to consume the same media library.
-
-### 4. GitOps split
-
-- Terraform: VM lifecycle on Proxmox.
-- Ansible: base OS, storage wiring, Docker host config, `k3s`, `Cilium`, Flux bootstrap.
-- Flux: all ongoing cluster resources and apps.
-
-## Hardware Constraints
-
-The current host has 8 GB RAM total. That is the main practical limitation here.
-
-Running all of the following together on one box is possible only with tight sizing and low expectations:
-
-- Proxmox
-- one Debian utility VM
-- three `k3s` VMs
-- Pi-hole
-- Vault
-- Grafana
-- Loki
-- Gitea
-- Jellyfin
-- Vaultwarden
-- Syncthing
-
-Recommended minimum for this design is 16 GB RAM, and 32 GB would be materially better. The sample Terraform sizing in this repo is conservative, but you should treat observability and Jellyfin as optional until memory pressure is validated.
-
-## Target Topology
-
-### Proxmox host
-
-- mounts DAS disks under `/srv/disks/*`
-- pools them under `/srv/storage/pool`
-- exports `/srv/storage/pool` as NFS
-
-### Utility VM: `penzance`
-
-- Debian 12
-- Docker Engine + Compose plugin
-- Pi-hole
-- HashiCorp Vault
-- optional future ad hoc containers
-- mounts shared NFS storage at `/srv/shared`
-- keeps its own config/state under `/srv/shared/vm/penzance`
-
-### Kubernetes VMs
-
-- Debian 12
-- `k3s`
-- `flannel` disabled
-- `servicelb` disabled
-- `traefik` disabled
-- `Cilium` installed after cluster bootstrap
-- shared NFS mounted at `/srv/shared`
-
-### In-cluster services
-
-- `external-secrets` wired to Vault
-- `external-dns` wired to Pi-hole for local DNS automation
-- `nfs-subdir-external-provisioner`
-- `kube-prometheus-stack`
-- `loki`
-- `cloudflared`
-- `gitea`
-- `vaultwarden`
-- `syncthing`
-- `jellyfin`
-- `gluetun` pattern placeholder for VPN-routed workloads
-
-## DNS and Ingress Model
-
-### Public apps
-
-Selected apps should be exposed through Cloudflare Tunnel:
-
-- public DNS in Cloudflare
-- `cloudflared` running in the cluster
-- origin services exposed internally via Kubernetes service/ingress
-
-### Local-only apps
-
-Local-only apps should resolve from Pi-hole using the same zone:
-
-- `grafana.towerundersiege.com`
-- `gitea.towerundersiege.com`
+- `pihole.towerundersiege.com`
+  - served by Caddy on `penzance`
+  - proxied to the Pi-hole container
+  - TLS handled by Caddy with the Cloudflare DNS challenge
 - `jellyfin.towerundersiege.com`
-- etc.
+  - local DNS points to the cluster ingress IP
+  - public access comes through `penzance` and cloudflared/Caddy
+  - cluster routing is handled by Cilium ingress
 
-Internally, those records should point at the Cilium ingress/load balancer IP on the LAN.
+## Storage Layout
 
-## Repository Layout
+The DAS is attached to `cornwall`, not to a guest.
+
+On the Proxmox host:
+
+- disks mount under `/srv/disks/*`
+- pooled storage root is `/srv/storage/pool`
+- that pool is exported over NFS
+
+Inside guests:
+
+- NFS is mounted at `/srv/shared`
+
+Shared namespaces:
+
+- `vm/<name>`: VM-owned config and state
+- `media`: cross-host media library
+- `k8s/<cluster>`: cluster-owned PVC-backed data
+
+For the current setup that means:
+
+- `/srv/shared/vm/penzance`
+- `/srv/shared/media`
+- `/srv/shared/k8s/lyonesse`
+
+## Automation Split
+
+- Terraform:
+  - creates and updates the Proxmox VMs
+- Ansible:
+  - configures Proxmox host storage and NFS
+  - configures guest base packages, users, SSH, Docker, `k3s`, `Cilium`, and Flux bootstrap
+- Flux:
+  - manages ongoing cluster resources and apps
+
+## Repo Layout
 
 ```text
 .
 ├── ansible/
+├── docs/
 ├── flux/
-└── terraform/
+├── keys/
+│   └── ssh/
+├── kubeconfig/
+├── scripts/
+├── terraform/
+├── homelab_cli.py
+└── AGENTS.md
 ```
 
-## Bootstrap Flow
+## Helper CLI
 
-1. Prepare a Debian 12 cloud-init template in Proxmox.
-2. Apply Terraform to create or reconcile all four VMs.
-3. Run the Proxmox-host Ansible playbook to configure `mergerfs` and NFS.
-4. Run the VM Ansible playbooks to:
-   - install Docker on `penzance`,
-   - mount shared storage,
-   - install Pi-hole and Vault,
-   - bootstrap `k3s`,
-   - install `Cilium`,
-   - install Flux.
-5. Push this repo to Git and point Flux at it.
-6. Let Flux reconcile infrastructure and apps.
+Primary entrypoint:
 
-## Terraform Notes
+```sh
+./scripts/homelab
+```
 
-The original intent was to import the existing `penzance` VM. In practice, the current `bpg/proxmox` provider import path proved unreliable in this environment. The safer operating assumption for this repository is therefore:
+Useful commands:
 
-1. inventory the old VM first,
-2. migrate storage deliberately,
-3. recreate `penzance` from the template when ready,
-4. restore only the services that should remain outside the cluster.
+```sh
+./scripts/homelab check-tools
+./scripts/homelab paths
+./scripts/homelab ssh cornwall
+./scripts/homelab ssh penzance
+./scripts/homelab ssh lyonesse-cp-01
+./scripts/homelab vms list
+./scripts/homelab vms get penzance
+./scripts/homelab k8s list
+./scripts/homelab k8s get lyonesse
+./scripts/homelab k8s kubeconfig lyonesse --sync
+./scripts/homelab k8s kubectl lyonesse get nodes -o wide
+./scripts/homelab deploy terraform-plan
+./scripts/homelab deploy terraform-apply --auto-approve
+./scripts/homelab deploy ansible proxmox
+./scripts/homelab deploy ansible penzance
+./scripts/homelab deploy ansible cluster
+./scripts/homelab deploy all --auto-approve
+```
 
-That is why the repository now models the improved end-state instead of the legacy direct-disk guest layout.
+`deploy` commands render secrets first.
 
-## Ansible Notes
+## Secrets and Passwords
 
-- Inventory is static to start with.
-- Secrets are rendered into the untracked file `ansible/inventories/lab/group_vars/all.secrets.yml`.
-- The roles are intentionally explicit and small rather than heavily abstracted.
+Secrets are not stored in tracked files. They live in the repo-local `pass` store:
 
-## Secrets Notes
+- store path: `.homelab-pass/`
+- prefix: `homelab/`
 
-This repository now assumes secrets are managed via a dedicated homelab `pass` store encrypted to a dedicated homelab GPG key. See [docs/secrets-workflow.md](/Users/ryan/Projects/k8s/docs/secrets-workflow.md).
+Expected entries:
 
-## Flux Notes
+- `homelab/proxmox/password`
+- `homelab/cloudflare/caddy_api_token`
+- `homelab/cloudflare/tunnel_token`
+- `homelab/pihole/web_password`
+- `homelab/vault/root_token`
+- `homelab/k3s/server_node_token`
 
-The Flux manifests are scaffolded, but actual bootstrap still requires:
+Rendered secret outputs:
 
-- a Git remote,
-- a repository URL,
-- credentials,
-- Vault secret paths and roles,
-- Cloudflare tunnel secret material.
+- `terraform/terraform.auto.tfvars.json`
+- `ansible/inventories/lab/group_vars/all.secrets.yml`
+- `.env.homelab`
 
-## Known Gaps
+Those files are ignored by Git.
 
-- Vault auto-unseal is not configured yet.
-- `Obsidian` is not represented as a concrete app manifest because there is no canonical self-hosted Obsidian server; decide whether you want LiveSync, CouchDB, or another sync-compatible service.
-- Backup, disaster recovery, and media transcoding tuning are not implemented yet.
-- `gluetun` is included as a deployment pattern placeholder, not yet integrated with a specific workload.
-- The current hardware is RAM-constrained. Until the memory upgrade lands, treat `lyonesse` as an effectively 2-node cluster.
+Initialize and render:
 
-## Suggested Next Steps
+```sh
+HOMELAB_GPG_PASSPHRASE='...' ./scripts/init-homelab-pass.sh
+./scripts/render-secrets.sh
+```
 
-1. Fill out `terraform/terraform.tfvars`.
-2. Decide the static IPs for all four VMs.
-3. Create or verify the Debian cloud-init template in Proxmox.
-4. Initialize the homelab pass store and seed the required secret entries.
-5. Sync a local kubeconfig when needed with `./scripts/homelab k8s kubeconfig lyonesse --sync`.
-6. Use `./scripts/homelab ssh cornwall` and `./scripts/homelab vms ssh <name>` for access through the repo-local keys.
-7. Use `./scripts/homelab deploy all --auto-approve` for the full render/init/plan/apply/ansible flow.
+Or use:
+
+```sh
+./scripts/homelab secrets init
+./scripts/homelab secrets render
+./scripts/homelab secrets list
+./scripts/homelab secrets get pihole/web_password --reveal
+./scripts/homelab secrets set pihole/web_password 'ExampleValue'
+```
+
+## SSH Keys
+
+SSH keys are repo-local under `keys/ssh/` and are ignored by Git.
+
+Current key set:
+
+- `cornwall_root_ed25519`
+- `penzance_ryan_ed25519`
+- `penzance_automation_ed25519`
+- `lyonesse-cp-01_ryan_ed25519`
+- `lyonesse-cp-01_automation_ed25519`
+
+There are also older `lyonesse-w-*` keys still present locally from the earlier multi-node layout. They are not part of the active inventory anymore.
+
+Usage model:
+
+- `*_automation_ed25519`
+  - used by Terraform/Ansible/CLI SSH
+- `*_ryan_ed25519`
+  - manual operator access as `ryan`
+- `cornwall_root_ed25519`
+  - root access to the Proxmox host
+
+## Terraform
+
+Current active VM definitions in `terraform/terraform.tfvars`:
+
+- `penzance`
+- `lyonesse-cp-01`
+
+Current desired sizing:
+
+- `penzance`: `1024 MB`
+- `lyonesse-cp-01`: `4096 MB`
+
+Useful commands:
+
+```sh
+cd terraform
+terraform init
+terraform plan
+terraform apply -auto-approve
+```
+
+Or:
+
+```sh
+./scripts/homelab deploy terraform-plan
+./scripts/homelab deploy terraform-apply --auto-approve
+```
+
+## Ansible
+
+Important playbooks:
+
+- `playbooks/proxmox.yml`
+- `playbooks/penzance.yml`
+- `playbooks/cluster.yml`
+- `playbooks/site.yml`
+
+Typical usage:
+
+```sh
+cd ansible
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook playbooks/proxmox.yml
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook playbooks/penzance.yml
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook playbooks/cluster.yml
+```
+
+Or:
+
+```sh
+./scripts/homelab deploy ansible proxmox
+./scripts/homelab deploy ansible penzance
+./scripts/homelab deploy ansible cluster
+```
+
+## Flux
+
+Flux is bootstrapped against:
+
+- repo: `git@github.com:towerundersiege/homelab.git`
+- branch: `main`
+- cluster path: `./flux/clusters/homelab`
+
+Current active cluster baseline includes:
+
+- Cilium
+- Pi-hole-driven `ExternalDNS`
+- `external-secrets`
+- NFS provisioner
+- Jellyfin
+
+Monitoring and other heavier app workloads were intentionally kept out of the active baseline while the machine is still resource-constrained.
+
+## Current Constraints
+
+- The box is still running on the pre-upgrade RAM at the time of writing, so `lyonesse` stays single-node for stability.
+- The cluster can become sluggish after forced VM power cycles; Cilium and app pods may need time to recover.
+- Pi-hole on `penzance` is the local DNS dependency for the rest of the environment.
+
+## Related Docs
+
+- [docs/secrets-workflow.md](/Users/ryan/Projects/k8s/docs/secrets-workflow.md)
+- [docs/proxmox-setup.md](/Users/ryan/Projects/k8s/docs/proxmox-setup.md)
+- [docs/dns-naming.md](/Users/ryan/Projects/k8s/docs/dns-naming.md)
+- [docs/penzance-inventory.md](/Users/ryan/Projects/k8s/docs/penzance-inventory.md)
