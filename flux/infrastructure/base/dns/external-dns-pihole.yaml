@@ -1,0 +1,35 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns-pihole
+  namespace: flux-system
+spec:
+  interval: 15m
+  targetNamespace: external-dns
+  chart:
+    spec:
+      chart: external-dns
+      version: "1.20.0"
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns
+        namespace: flux-system
+  values:
+    policy: upsert-only
+    registry: noop
+    provider:
+      name: pihole
+    sources:
+      - ingress
+      - service
+    domainFilters:
+      - towerundersiege.com
+    extraArgs:
+      - --pihole-api-version=6
+      - --pihole-server=http://192.168.1.101:8080
+    env:
+      - name: EXTERNAL_DNS_PIHOLE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-pihole
+            key: EXTERNAL_DNS_PIHOLE_PASSWORD

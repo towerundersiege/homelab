@@ -16,3 +16,4 @@
   roles:
     - cilium
     - flux
+    - cluster_bootstrap

@@ -29,7 +29,7 @@ proxmox_storage_media_root: /srv/storage/pool/media
 
 docker_stack_root: /opt/penzance
 penzance_compose_file: "{{ docker_stack_root }}/docker-compose.yml"
-penzance_caddyfile_path: "{{ docker_stack_root }}/Caddyfile"
+penzance_caddyfile_path: "{{ penzance_data_root }}/config/caddy/Caddyfile"
 penzance_data_root: /srv/shared/vm/penzance
 pihole_host_ip: 192.168.1.101
 pihole_dns_records:

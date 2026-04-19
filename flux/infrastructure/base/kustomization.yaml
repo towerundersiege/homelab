@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespaces.yaml
   - sources/helm.yaml
+  - dns/external-dns-pihole.yaml
   - ingress/cilium-ingress.yaml
   - storage/nfs-provisioner.yaml
   - external-secrets.yaml

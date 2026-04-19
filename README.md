@@ -11,6 +11,7 @@ This repository bootstraps a small Proxmox-backed homelab around one Debian util
 - `Cilium` as the CNI and ingress/L2 load balancer.
 - `cloudflared` for public exposure of selected services.
 - Local-only ingress through the same `towerundersiege.com` zone, resolved internally by Pi-hole.
+- `ExternalDNS` to sync selected Kubernetes ingress and service hostnames into Pi-hole.
 - Platform services for metrics/logging, storage, secrets, and application workloads.
 
 ## Current Scope
@@ -146,6 +147,7 @@ Recommended minimum for this design is 16 GB RAM, and 32 GB would be materially 
 ### In-cluster services
 
 - `external-secrets` wired to Vault
+- `external-dns` wired to Pi-hole for local DNS automation
 - `nfs-subdir-external-provisioner`
 - `kube-prometheus-stack`
 - `loki`
