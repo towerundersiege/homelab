@@ -42,18 +42,4 @@ vm_definitions = {
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOA1T2ekAkm6nSv/JV5avu1fKyf7U6vHnJ8CWp0cK9Pq automation@lyonesse-cp-01",
     ]
   }
-  lyonesse-w-02 = {
-    vm_id      = 113
-    role       = "k3s-worker"
-    ip_address = "192.168.1.104"
-    cidr       = 24
-    cpu_cores  = 2
-    memory_mb  = 1024
-    disk_gb    = 48
-    tags       = ["terraform", "k3s", "worker"]
-    ssh_public_keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLoWwMqSiMLQS5rL0hxAV9HfffaT2zPd5O1dFas7bpK ryan@lyonesse-w-02",
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE9ZJ4zI1Z8PzaAl0M0S/pA374CSr9WmfLZ1FvjZ3vaj automation@lyonesse-w-02",
-    ]
-  }
 }

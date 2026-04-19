@@ -43,8 +43,6 @@ pihole_dns_records:
     ip: 192.168.1.101
   - domain: lyonesse-cp-01.vm.towerundersiege.com
     ip: 192.168.1.102
-  - domain: lyonesse-w-02.vm.towerundersiege.com
-    ip: 192.168.1.104
   - domain: api.lyonesse.k8s.towerundersiege.com
     ip: 192.168.1.102
   - domain: ingress.lyonesse.k8s.towerundersiege.com
