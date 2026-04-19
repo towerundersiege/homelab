@@ -8,4 +8,3 @@ resources:
   - external-secrets.yaml
   - monitoring/kube-prometheus-stack.yaml
   - monitoring/loki.yaml
-  - cloudflared.yaml
