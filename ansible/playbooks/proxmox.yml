@@ -1,0 +1,9 @@
+---
+- name: Configure Proxmox host storage
+  hosts: proxmox_hosts
+  become: true
+  vars_files:
+    - ../inventories/lab/group_vars/all.secrets.yml
+  roles:
+    - common
+    - proxmox_host_storage

@@ -1,0 +1,74 @@
+proxmox_endpoint = "https://proxmox.towerundersiege.com:8006/api2/json"
+proxmox_username = "terraform@pve"
+proxmox_password = "REPLACE_ME"
+proxmox_insecure = true
+
+proxmox_node_name = "pve"
+vm_template_id    = 9000
+vm_storage        = "local-lvm"
+cloud_init_storage = "local-lvm"
+
+default_gateway = "192.168.1.1"
+dns_servers     = ["192.168.1.53", "1.1.1.1"]
+
+ci_user     = "ansible"
+ci_password = null
+
+vm_definitions = {
+  penzance = {
+    vm_id      = 110
+    role       = "utility"
+    ip_address = "192.168.1.53"
+    cidr       = 24
+    cpu_cores  = 2
+    memory_mb  = 1024
+    disk_gb    = 48
+    tags       = ["terraform", "utility", "docker"]
+    ssh_public_keys = [
+      "ssh-ed25519 AAAA... penzance-ryan",
+      "ssh-ed25519 AAAA... penzance-automation",
+    ]
+  }
+  lyonesse-cp-01 = {
+    vm_id      = 111
+    role       = "k3s-control-plane"
+    ip_address = "192.168.1.61"
+    cidr       = 24
+    cpu_cores  = 2
+    memory_mb  = 1536
+    disk_gb    = 48
+    tags       = ["terraform", "k3s", "control-plane"]
+    ssh_public_keys = [
+      "ssh-ed25519 AAAA... lyonesse-cp-01-ryan",
+      "ssh-ed25519 AAAA... lyonesse-cp-01-automation",
+    ]
+  }
+  lyonesse-w-01 = {
+    vm_id      = 112
+    role       = "k3s-worker"
+    ip_address = "192.168.1.62"
+    cidr       = 24
+    cpu_cores  = 2
+    memory_mb  = 1024
+    disk_gb    = 48
+    tags       = ["terraform", "k3s", "worker"]
+    ssh_public_keys = [
+      "ssh-ed25519 AAAA... lyonesse-w-01-ryan",
+      "ssh-ed25519 AAAA... lyonesse-w-01-automation",
+    ]
+  }
+  lyonesse-w-02 = {
+    vm_id      = 113
+    role       = "k3s-worker"
+    ip_address = "192.168.1.63"
+    cidr       = 24
+    cpu_cores  = 2
+    memory_mb  = 1024
+    disk_gb    = 48
+    tags       = ["terraform", "k3s", "worker"]
+    ssh_public_keys = [
+      "ssh-ed25519 AAAA... lyonesse-w-02-ryan",
+      "ssh-ed25519 AAAA... lyonesse-w-02-automation",
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: syncthing
+  namespace: flux-system
+spec:
+  interval: 15m
+  targetNamespace: apps
+  chart:
+    spec:
+      chart: app-template
+      version: "3.5.1"
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: lscr.io/linuxserver/syncthing
+              tag: "latest"
+            env:
+              TZ: Europe/London
+    service:
+      main:
+        ports:
+          http:
+            port: 8384
+            targetPort: 8384
+          sync-tcp:
+            port: 22000
+            targetPort: 22000
+          sync-udp:
+            port: 22000
+            protocol: UDP
+            targetPort: 22000
+    persistence:
+      config:
+        enabled: true
+        storageClass: nfs-client
+        size: 5Gi
+      data:
+        enabled: true
+        storageClass: nfs-client
+        size: 100Gi

@@ -1,0 +1,55 @@
+networks:
+  edge:
+    driver: bridge
+
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: "{{ timezone }}"
+      FTLCONF_webserver_api_password: "{{ pihole_web_password }}"
+      FTLCONF_dns_listeningMode: "all"
+    volumes:
+      - "{{ penzance_data_root }}/config/pihole:/etc/pihole"
+      - "{{ penzance_data_root }}/config/pihole/dnsmasq.d:/etc/dnsmasq.d"
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+
+  caddy:
+    image: ghcr.io/caddybuilds/caddy-cloudflare:latest
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      - pihole
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CLOUDFLARE_API_TOKEN: "{{ caddy_cloudflare_api_token }}"
+    volumes:
+      - "{{ penzance_caddyfile_path }}:/etc/caddy/Caddyfile:ro"
+      - "{{ penzance_data_root }}/config/caddy/data:/data"
+      - "{{ penzance_data_root }}/config/caddy/config:/config"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    depends_on:
+      - caddy
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "{{ cloudflared_tunnel_token }}"
+      TZ: "{{ timezone }}"
+    networks:
+      - edge

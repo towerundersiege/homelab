@@ -1,0 +1,53 @@
+---
+- name: Download Cilium CLI archive
+  ansible.builtin.get_url:
+    url: "https://github.com/cilium/cilium-cli/releases/download/v0.17.0/cilium-linux-amd64.tar.gz"
+    dest: /tmp/cilium-linux-amd64.tar.gz
+    mode: "0644"
+
+- name: Install Cilium CLI
+  ansible.builtin.unarchive:
+    src: /tmp/cilium-linux-amd64.tar.gz
+    dest: /usr/local/bin
+    remote_src: true
+    creates: /usr/local/bin/cilium
+
+- name: Install Cilium into k3s
+  ansible.builtin.command: >
+    cilium install
+    --version {{ cilium_version }}
+    --set kubeProxyReplacement=true
+    --set k8sServiceHost={{ k3s_api_endpoint }}
+    --set k8sServicePort=6443
+    --set ingressController.enabled=true
+    --set ingressController.loadbalancerMode=shared
+    --set l2announcements.enabled=true
+    --set externalIPs.enabled=true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: cilium_install
+  changed_when: "'already installed' not in cilium_install.stdout"
+
+- name: Render Cilium load balancer manifests
+  ansible.builtin.template:
+    src: cilium-l2.yaml.j2
+    dest: /tmp/cilium-l2.yaml
+    mode: "0644"
+
+- name: Wait for Cilium CRDs
+  ansible.builtin.command: >
+    kubectl get crd
+    ciliumloadbalancerippools.cilium.io
+    ciliuml2announcementpolicies.cilium.io
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: cilium_crds
+  changed_when: false
+  retries: 30
+  delay: 5
+  until: cilium_crds.rc == 0
+
+- name: Apply Cilium L2 manifests
+  ansible.builtin.command: kubectl apply -f /tmp/cilium-l2.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml

@@ -1,0 +1,155 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - dnsutils
+      - curl
+      - ethtool
+      - fzf
+      - git
+      - gpg
+      - htop
+      - iftop
+      - iperf3
+      - iproute2
+      - iputils-ping
+      - htop
+      - jq
+      - less
+      - net-tools
+      - nmap
+      - nfs-common
+      - rsync
+      - tcpdump
+      - tmux
+      - traceroute
+      - vim
+      - zsh
+      - zsh-syntax-highlighting
+    state: present
+    update_cache: true
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Disable swap immediately
+  ansible.builtin.command: swapoff -a
+  when: ansible_swaptotal_mb | int > 0
+  changed_when: ansible_swaptotal_mb | int > 0
+
+- name: Disable swap in fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\s+swap\s+.*)$'
+    replace: '# \1'
+
+- name: Create shared storage mountpoint
+  ansible.builtin.file:
+    path: "{{ shared_storage_mountpoint }}"
+    state: directory
+    mode: "0755"
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Mount shared storage from Proxmox NFS export
+  ansible.posix.mount:
+    src: "{{ shared_storage_nfs_export }}"
+    path: "{{ shared_storage_mountpoint }}"
+    fstype: nfs
+    opts: "{{ shared_storage_mount_opts }}"
+    state: mounted
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Ensure bootstrap user has sudo access
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ bootstrap_user }}"
+    mode: "0440"
+    content: |
+      {{ bootstrap_user }} ALL=(ALL) NOPASSWD:ALL
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Create ryan group memberships
+  ansible.builtin.user:
+    name: "{{ ryan_user }}"
+    shell: "{{ ryan_shell }}"
+    groups: "{{ ryan_groups | join(',') }}"
+    append: true
+    create_home: true
+    state: present
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Ensure ryan .ssh directory exists
+  ansible.builtin.file:
+    path: "/home/{{ ryan_user }}/.ssh"
+    state: directory
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+    mode: "0700"
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Install ryan authorized keys
+  ansible.builtin.authorized_key:
+    user: "{{ ryan_user }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ hostvars[inventory_hostname].terraform_ssh_public_keys | select('search', ' ryan@') | list }}"
+  when:
+    - "'proxmox_hosts' not in group_names"
+    - hostvars[inventory_hostname].terraform_ssh_public_keys is defined
+
+- name: Ensure ryan config directories exist
+  ansible.builtin.file:
+    path: "/home/{{ ryan_user }}/{{ item }}"
+    state: directory
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+    mode: "0755"
+  loop:
+    - .config
+    - .config/zsh
+    - .cache
+    - .cache/zsh
+    - .local
+    - .local/bin
+    - Projects
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Render ryan zprofile
+  ansible.builtin.template:
+    src: ryan-zprofile.j2
+    dest: "/home/{{ ryan_user }}/.config/zsh/.zprofile"
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+    mode: "0644"
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Link ryan zprofile
+  ansible.builtin.file:
+    src: "/home/{{ ryan_user }}/.config/zsh/.zprofile"
+    dest: "/home/{{ ryan_user }}/.zprofile"
+    state: link
+    force: true
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Render ryan zshrc
+  ansible.builtin.template:
+    src: ryan-zshrc.j2
+    dest: "/home/{{ ryan_user }}/.config/zsh/.zshrc"
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+    mode: "0644"
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Ensure ZDOTDIR is set for ryan
+  ansible.builtin.copy:
+    dest: "/home/{{ ryan_user }}/.zshenv"
+    owner: "{{ ryan_user }}"
+    group: "{{ ryan_user }}"
+    mode: "0644"
+    content: |
+      export ZDOTDIR="$HOME/.config/zsh"
+  when: "'proxmox_hosts' not in group_names"

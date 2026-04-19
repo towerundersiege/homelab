@@ -1,0 +1,20 @@
+export EDITOR=vim
+export GIT_EDITOR=vim
+export PAGER=less
+unset LESSOPEN
+
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_STATE_HOME="$HOME/.local/state"
+
+export BIN_DIR="$HOME/.local/bin"
+if [ -d "$BIN_DIR" ]; then
+  export PATH="$PATH:$(find -L "$BIN_DIR" -type d | paste -sd ':' -)"
+fi
+
+export PROJECTS_DIR="$HOME/Projects"
+export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+export ZCOMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump"
+export KUBECONFIG="$XDG_CONFIG_HOME/kube/config"
+export KUBECACHEDIR="$XDG_CACHE_HOME/kube"

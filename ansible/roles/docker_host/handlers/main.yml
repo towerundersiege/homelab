@@ -1,0 +1,10 @@
+---
+- name: Restart caddy container
+  community.docker.docker_container:
+    name: caddy
+    restart: true
+
+- name: Restart pihole container
+  community.docker.docker_container:
+    name: pihole
+    restart: true

@@ -1,0 +1,68 @@
+HISTFILE="$HOME/.zhistory"
+HISTSIZE=100000
+SAVEHIST=100000
+setopt extended_history
+setopt hist_find_no_dups
+setopt inc_append_history
+setopt share_history
+
+bindkey -e
+export WORDCHARS="_-"
+setopt globdots
+setopt nolistbeep
+setopt prompt_subst
+
+autoload -Uz colors && colors
+autoload -Uz vcs_info
+zstyle ':vcs_info:git:*' formats ' %b'
+precmd() { vcs_info }
+PROMPT='%F{magenta}${HOST}%f %F{blue}%~%f%F{green}${vcs_info_msg_0_}%f %(?.%F{green}.%F{red})$%f '
+
+alias ls="ls -hv --color=auto --group-directories-first"
+alias la="ls -a"
+alias ll="ls -al"
+alias cp="cp -iv"
+alias mv="mv -iv"
+alias rm="rm -vI"
+alias md="mkdir -pv"
+alias v="vim"
+alias tmux="tmux -u2"
+alias howbig="du -sh"
+alias spaceleft="df -h ."
+
+alias g="git"
+alias gs="git status"
+alias ga="git add"
+alias gc="git commit -m"
+alias gca="git commit --amend --no-edit"
+alias gpl="git pull"
+alias gp="git push"
+alias gco="git checkout"
+alias gcob="git checkout -b"
+
+glo() {
+  git log --oneline -$([[ -z $1 ]] && echo 5 || echo $1)
+}
+
+alias k="kubectl"
+alias kg="kubectl get"
+alias kgp="kubectl get pod"
+alias kd="kubectl describe"
+alias kdp="kubectl describe pod"
+alias kgc="kubectl config get-contexts"
+alias kuc="kubectl config use-context"
+alias knd="kubectl config set-context --current --namespace"
+
+export FZF_DEFAULT_OPTS="--height=40% --layout=reverse -m --border=rounded --no-separator --no-scrollbar"
+
+autoload -Uz compinit
+mkdir -p "$XDG_CACHE_HOME/zsh"
+compinit -C -d "$ZCOMPDUMP"
+
+if command -v fzf >/dev/null 2>&1; then
+  source <(fzf --zsh)
+fi
+
+if [ -f /usr/share/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh ]; then
+  source /usr/share/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
+fi

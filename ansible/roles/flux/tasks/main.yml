@@ -1,0 +1,69 @@
+---
+- name: Download Flux install script
+  ansible.builtin.get_url:
+    url: https://fluxcd.io/install.sh
+    dest: /tmp/flux-install.sh
+    mode: "0755"
+
+- name: Install Flux CLI
+  ansible.builtin.command: /tmp/flux-install.sh
+  args:
+    creates: /usr/local/bin/flux
+
+- name: Install Flux controllers
+  ansible.builtin.command: flux install --namespace={{ flux_namespace }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: flux_install
+  changed_when: "'installing components' in flux_install.stdout"
+
+- name: Render Flux GitRepository bootstrap manifest
+  ansible.builtin.copy:
+    dest: /tmp/flux-gitrepository.yaml
+    mode: "0644"
+    content: |
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: GitRepository
+      metadata:
+        name: homelab
+        namespace: {{ flux_namespace }}
+      spec:
+        interval: 1m
+        ref:
+          branch: {{ flux_git_branch }}
+        url: {{ flux_git_url }}
+
+- name: Render Flux cluster Kustomization bootstrap manifest
+  ansible.builtin.copy:
+    dest: /tmp/flux-kustomization.yaml
+    mode: "0644"
+    content: |
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: homelab
+        namespace: {{ flux_namespace }}
+      spec:
+        interval: 10m
+        path: {{ flux_cluster_path }}
+        prune: true
+        sourceRef:
+          kind: GitRepository
+          name: homelab
+        wait: true
+
+- name: Apply Flux GitRepository bootstrap manifest
+  ansible.builtin.command: kubectl apply -f /tmp/flux-gitrepository.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when:
+    - flux_git_url is match('^https://')
+    - "'REPLACE_ME' not in flux_git_url"
+
+- name: Apply Flux cluster Kustomization bootstrap manifest
+  ansible.builtin.command: kubectl apply -f /tmp/flux-kustomization.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when:
+    - flux_git_url is match('^https://')
+    - "'REPLACE_ME' not in flux_git_url"

@@ -1,0 +1,9 @@
+---
+- name: Configure penzance utility host
+  hosts: penzance
+  become: true
+  vars_files:
+    - ../inventories/lab/group_vars/all.secrets.yml
+  roles:
+    - common
+    - docker_host

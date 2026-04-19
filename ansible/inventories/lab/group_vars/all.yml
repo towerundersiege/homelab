@@ -1,0 +1,85 @@
+ansible_user: ansible
+
+timezone: Europe/London
+bootstrap_user: ansible
+ryan_user: ryan
+ryan_groups:
+  - sudo
+ryan_shell: /usr/bin/zsh
+
+shared_storage_mountpoint: /srv/shared
+shared_storage_nfs_export: 192.168.1.100:/
+shared_storage_mount_opts: rw,nfsvers=4.2,hard,timeo=600,retrans=2,noatime
+shared_storage_vm_root: "{{ shared_storage_mountpoint }}/vm"
+shared_storage_penzance_root: "{{ shared_storage_mountpoint }}/vm/penzance"
+shared_storage_k8s_root: "{{ shared_storage_mountpoint }}/k8s/lyonesse"
+shared_storage_media_root: "{{ shared_storage_mountpoint }}/media"
+
+proxmox_storage_disks:
+  - uuid: ca9854ac-263a-43c1-a64d-7f7554bebf2c
+    mountpoint: /srv/disks/disk1
+
+proxmox_storage_pool_path: /srv/storage/pool
+proxmox_storage_pool_name: pool
+proxmox_nfs_export_cidr: 192.168.1.0/24
+proxmox_storage_vm_root: /srv/storage/pool/vm
+proxmox_storage_penzance_root: /srv/storage/pool/vm/penzance
+proxmox_storage_k8s_root: /srv/storage/pool/k8s/lyonesse
+proxmox_storage_media_root: /srv/storage/pool/media
+
+docker_stack_root: /opt/penzance
+penzance_compose_file: "{{ docker_stack_root }}/docker-compose.yml"
+penzance_caddyfile_path: "{{ docker_stack_root }}/Caddyfile"
+penzance_data_root: /srv/shared/vm/penzance
+pihole_host_ip: 192.168.1.101
+pihole_dns_records:
+  - domain: cornwall.proxmox.towerundersiege.com
+    ip: 192.168.1.100
+  - domain: cornwall.towerundersiege.com
+    ip: 192.168.1.100
+  - domain: penzance.vm.towerundersiege.com
+    ip: 192.168.1.101
+  - domain: penzance.towerundersiege.com
+    ip: 192.168.1.101
+  - domain: lyonesse-cp-01.vm.towerundersiege.com
+    ip: 192.168.1.102
+  - domain: lyonesse-w-01.vm.towerundersiege.com
+    ip: 192.168.1.103
+  - domain: lyonesse-w-02.vm.towerundersiege.com
+    ip: 192.168.1.104
+  - domain: api.lyonesse.k8s.towerundersiege.com
+    ip: 192.168.1.102
+  - domain: ingress.lyonesse.k8s.towerundersiege.com
+    ip: 192.168.1.110
+  - domain: pihole.towerundersiege.com
+    ip: 192.168.1.101
+  - domain: jellyfin.towerundersiege.com
+    ip: 192.168.1.110
+pihole_local_domain: pihole.towerundersiege.com
+jellyfin_local_domain: jellyfin.towerundersiege.com
+vault_listen_address: 0.0.0.0:8200
+
+k3s_version: v1.30.6+k3s1
+k3s_cluster_cidr: 10.42.0.0/16
+k3s_service_cidr: 10.43.0.0/16
+k3s_cluster_dns: 10.43.0.10
+k3s_disable_components:
+  - servicelb
+  - traefik
+
+k3s_api_endpoint: 192.168.1.102
+
+cilium_version: 1.16.3
+cilium_ingress_lb_ip: 192.168.1.110
+cilium_loadbalancer_pool:
+  - start: 192.168.1.110
+    stop: 192.168.1.119
+
+flux_namespace: flux-system
+flux_git_url: https://github.com/REPLACE_ME/k8s.git
+flux_git_branch: main
+flux_cluster_path: ./flux/clusters/homelab
+
+vault_addr: http://penzance:8200
+vault_kv_mount: homelab
+vault_kubernetes_role: homelab

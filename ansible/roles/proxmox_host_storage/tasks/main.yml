@@ -1,0 +1,86 @@
+---
+- name: Install Proxmox host storage packages
+  ansible.builtin.apt:
+    name:
+      - mergerfs
+      - nfs-kernel-server
+    state: present
+    update_cache: true
+
+- name: Create disk mountpoints
+  ansible.builtin.file:
+    path: "{{ item.mountpoint }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ proxmox_storage_disks }}"
+
+- name: Mount storage disks by UUID
+  ansible.posix.mount:
+    src: "UUID={{ item.uuid }}"
+    path: "{{ item.mountpoint }}"
+    fstype: ext4
+    opts: defaults,noatime
+    state: mounted
+  loop: "{{ proxmox_storage_disks }}"
+
+- name: Create mergerfs pool path
+  ansible.builtin.file:
+    path: "{{ proxmox_storage_pool_path }}"
+    state: directory
+    mode: "0775"
+
+- name: Mount mergerfs pool
+  ansible.posix.mount:
+    src: "{{ proxmox_storage_disks | map(attribute='mountpoint') | join(':') }}"
+    path: "{{ proxmox_storage_pool_path }}"
+    fstype: fuse.mergerfs
+    opts: defaults,allow_other,use_ino,category.create=mfs,moveonenospc=true,minfreespace=50G
+    state: mounted
+
+- name: Ensure NFS exports directory exists
+  ansible.builtin.file:
+    path: /etc/exports.d
+    state: directory
+    mode: "0755"
+
+- name: Export mergerfs pool over NFS
+  ansible.builtin.copy:
+    dest: /etc/exports.d/homelab.exports
+    mode: "0644"
+    content: |
+      {{ proxmox_storage_pool_path }} {{ proxmox_nfs_export_cidr }}(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+  notify: Restart nfs server
+
+- name: Ensure NFS server is enabled
+  ansible.builtin.service:
+    name: nfs-kernel-server
+    state: started
+    enabled: true
+
+- name: Create application directories on shared storage
+  ansible.builtin.file:
+    path: "{{ proxmox_storage_pool_path }}/{{ item }}"
+    state: directory
+    mode: "0775"
+  loop:
+    - vm
+    - vm/penzance
+    - vm/penzance/config
+    - vm/penzance/config/caddy
+    - vm/penzance/config/caddy/data
+    - vm/penzance/config/caddy/config
+    - vm/penzance/config/pihole
+    - vm/penzance/config/pihole/dnsmasq.d
+    - vm/penzance/downloads
+    - vm/penzance/torrents
+    - vm/penzance/usenet
+    - media
+    - media/music
+    - media/movies
+    - media/tv
+    - k8s
+    - k8s/lyonesse
+    - k8s/lyonesse/apps
+    - k8s/lyonesse/logs
+    - k8s/lyonesse/metrics
+    - backups
