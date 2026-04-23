@@ -97,7 +97,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "penzance_public_ingr
       [
         for hostname in local.tunnel_public_hostnames : {
           hostname = hostname
-          service  = "https://caddy"
+          service  = "https://cilium-ingress.kube-system.svc.cluster.local"
           origin_request = {
             no_tls_verify      = false
             origin_server_name = hostname

@@ -8,7 +8,7 @@ cloudflare_manage_geo_restriction = false
 cloudflare_manage_cache_rule      = true
 cloudflare_manage_rate_limit      = true
 cloudflare_manage_warp_profile    = true
-cloudflare_tunnel_manage_config   = false
+cloudflare_tunnel_manage_config   = true
 
 proxmox_node_name  = "cornwall"
 vm_template_id     = 9000
