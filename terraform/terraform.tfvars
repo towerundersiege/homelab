@@ -2,6 +2,14 @@ proxmox_endpoint = "https://192.168.1.100:8006/api2/json"
 proxmox_username = "terraform@pve"
 proxmox_insecure = true
 
+cloudflare_enabled                = true
+cloudflare_manage_zone_rules      = false
+cloudflare_manage_geo_restriction = false
+cloudflare_manage_cache_rule      = true
+cloudflare_manage_rate_limit      = true
+cloudflare_manage_warp_profile    = true
+cloudflare_tunnel_manage_config   = false
+
 proxmox_node_name  = "cornwall"
 vm_template_id     = 9000
 vm_storage         = "local-lvm"
@@ -34,7 +42,7 @@ vm_definitions = {
     ip_address = "192.168.1.102"
     cidr       = 24
     cpu_cores  = 2
-    memory_mb  = 4096
+    memory_mb  = 8192
     disk_gb    = 48
     tags       = ["terraform", "k3s", "control-plane"]
     ssh_public_keys = [

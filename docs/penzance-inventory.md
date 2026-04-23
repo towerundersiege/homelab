@@ -60,7 +60,6 @@ The `penzance` namespace is:
 ```text
 /srv/shared/vm/penzance/
 ├── config/
-│   ├── caddy/
 │   └── pihole/
 ├── downloads/
 ├── torrents/
@@ -95,15 +94,11 @@ Rules:
 The target-state Docker stack on `penzance` is intentionally small:
 
 - `pihole`
-- `caddy`
-- `cloudflared`
-- `vault`
 
 Current repo status:
 
-- Compose target-state examples are present for `pihole`, `caddy`, and `cloudflared`
+- Compose target-state examples are present for `pihole`
 - Jellyfin has been removed from the Compose side and is intended to run through Flux on Kubernetes
-- Vault remains part of the intended utility-host role, but its production-grade bootstrap is still incomplete
 
 ## DNS and HTTP
 
@@ -123,14 +118,16 @@ User-facing local app names:
 
 - `pihole.towerundersiege.com`
 - `jellyfin.towerundersiege.com`
+- `isambard.towerundersiege.com`
+- `isambard-browser.towerundersiege.com`
 - future app names such as `grafana.towerundersiege.com`, `gitea.towerundersiege.com`
 
 Target behavior:
 
 - Pi-hole serves local DNS records for infrastructure and local-only app names
-- Caddy on `penzance` exposes Pi-hole locally
-- Kubernetes ingress handles k8s-hosted app names
-- Cloudflare Tunnel exposes only selected public services
+- Cilium ingress terminates TLS for selected local app names on `192.168.1.110`
+- `pihole.towerundersiege.com` routes through Cilium to the Pi-hole web port on `192.168.1.101:8080`
+- Cloudflare Tunnel runs in Kubernetes for selected public services
 
 ## User Model
 

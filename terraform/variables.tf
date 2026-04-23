@@ -3,6 +3,97 @@ variable "proxmox_endpoint" {
   type        = string
 }
 
+variable "cloudflare_enabled" {
+  description = "Enable Cloudflare-managed public edge resources for Jellyfin"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token used by Terraform for zone and tunnel management"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare account ID for Zero Trust tunnel management"
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for towerundersiege.com"
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_tunnel_id" {
+  description = "Existing remotely-managed Cloudflare Tunnel ID for penzance"
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_tunnel_manage_config" {
+  description = "Whether Terraform should manage the full ingress list for the existing Cloudflare Tunnel"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_manage_zone_rules" {
+  description = "Whether Terraform should manage Cloudflare zone rulesets for Jellyfin"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_manage_geo_restriction" {
+  description = "Whether Terraform should manage the Jellyfin geo restriction rule"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_manage_cache_rule" {
+  description = "Whether Terraform should manage the Jellyfin cache bypass rule"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_manage_rate_limit" {
+  description = "Whether Terraform should manage the Jellyfin auth rate limit rule"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_manage_warp_profile" {
+  description = "Whether Terraform should manage WARP device profiles and local domain fallback"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_zero_trust_email_allowlist" {
+  description = "Email addresses allowed to access the homelab private network through Cloudflare Zero Trust"
+  type        = list(string)
+  default     = ["info@towerundersiege.com"]
+}
+
+variable "cloudflare_private_network_cidr" {
+  description = "Private network CIDR routed through the Cloudflare Tunnel for homelab access"
+  type        = string
+  default     = "192.168.1.0/24"
+}
+
+variable "cloudflare_private_dns_suffixes" {
+  description = "DNS suffixes that WARP should resolve via the homelab DNS server"
+  type        = list(string)
+  default     = ["towerundersiege.com"]
+}
+
+variable "cloudflare_private_dns_servers" {
+  description = "DNS servers used for Zero Trust local domain fallback"
+  type        = list(string)
+  default     = ["192.168.1.101"]
+}
+
 variable "proxmox_username" {
   description = "Proxmox username, usually user@realm"
   type        = string

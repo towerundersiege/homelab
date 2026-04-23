@@ -70,9 +70,11 @@ Suggested initial local records:
 - `ingress.lyonesse.k8s.towerundersiege.com` -> `192.168.1.110`
 - `pihole.towerundersiege.com` -> `192.168.1.110`
 - `jellyfin.towerundersiege.com` -> `192.168.1.110`
+- `isambard.towerundersiege.com` -> `192.168.1.110`
+- `isambard-browser.towerundersiege.com` -> `192.168.1.110`
 
 ## Notes
 
-- Point service names like `pihole.towerundersiege.com` and `jellyfin.towerundersiege.com` at the ingress IP when they are exposed through a shared ingress layer.
+- Point service names at the system that actually terminates local TLS. `jellyfin.towerundersiege.com` and `isambard*.towerundersiege.com` currently point at the Cilium ingress IP, `192.168.1.110`.
 - Keep infra names and service names separate. `cornwall.proxmox` is the hypervisor, `penzance.vm` is the VM, `api.lyonesse.k8s` is the cluster API, and `pihole.towerundersiege.com` is the application.
 - Reserve the `k8s` subdomain for cluster-level identities, not individual nodes. Node machines remain under `vm`.

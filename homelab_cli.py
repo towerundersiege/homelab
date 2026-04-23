@@ -209,17 +209,33 @@ def host_connection(name: str) -> tuple[str, dict[str, Any], dict[str, Any], str
     return resolved, host, group_vars, user
 
 
+def ssh_identity_config(host_name: str, identity: str) -> tuple[dict[str, Any], str, str]:
+    resolved, host, _, automation_user = host_connection(host_name)
+
+    if identity == "automation":
+        key_file = host.get("ansible_ssh_private_key_file")
+        user = automation_user
+    elif identity == "ryan":
+        key_file = host.get("ssh_private_key_file") or host.get("ansible_ssh_private_key_file")
+        user = host.get("ssh_user") or ("root" if resolved == "cornwall" else "ryan")
+    else:
+        raise click.ClickException(f"unsupported ssh identity: {identity}")
+
+    if not key_file:
+        raise click.ClickException(f"host {host_name} has no SSH key configured for identity {identity}")
+
+    return host, user, key_file
+
+
 def ssh_command(
     host_name: str,
     remote_args: list[str] | None = None,
     *,
+    identity: str = "automation",
     allocate_tty: bool = False,
     disable_host_key_checking: bool = True,
 ) -> list[str]:
-    _, host, _, user = host_connection(host_name)
-    key_file = host.get("ansible_ssh_private_key_file")
-    if not key_file:
-        raise click.ClickException(f"host {host_name} has no ansible_ssh_private_key_file configured")
+    host, user, key_file = ssh_identity_config(host_name, identity)
 
     cmd = ["ssh"]
     if disable_host_key_checking:
@@ -233,13 +249,13 @@ def ssh_command(
     return cmd
 
 
-def ssh_exec(host_name: str, remote_args: list[str], *, allocate_tty: bool = False) -> None:
-    cmd = ssh_command(host_name, remote_args, allocate_tty=allocate_tty)
+def ssh_exec(host_name: str, remote_args: list[str], *, identity: str = "automation", allocate_tty: bool = False) -> None:
+    cmd = ssh_command(host_name, remote_args, identity=identity, allocate_tty=allocate_tty)
     os.execvp(cmd[0], cmd)
 
 
 def ssh_capture(host_name: str, remote_args: list[str]) -> str:
-    result = run(ssh_command(host_name, remote_args), capture_output=True)
+    result = run(ssh_command(host_name, remote_args, identity="automation"), capture_output=True)
     return result.stdout or ""
 
 
@@ -313,8 +329,9 @@ def check_tools() -> None:
 @cli.command("ssh", context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False})
 @click.argument("name")
 @click.argument("remote_args", nargs=-1, type=click.UNPROCESSED)
-def ssh_host(name: str, remote_args: tuple[str, ...]) -> None:
-    ssh_exec(name, list(remote_args), allocate_tty=not remote_args)
+@click.option("--identity", type=click.Choice(["ryan", "automation"]), default="ryan", show_default=True)
+def ssh_host(name: str, remote_args: tuple[str, ...], identity: str) -> None:
+    ssh_exec(name, list(remote_args), identity=identity, allocate_tty=not remote_args)
 
 
 @cli.group()

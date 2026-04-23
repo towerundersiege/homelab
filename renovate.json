@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Europe/London",
+  "schedule": [
+    "before 11am on saturday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "dependencyDashboard": true,
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "jellyfin/jellyfin"
+      ],
+      "enabled": false,
+      "description": "Hold Jellyfin at 10.10.1 until the 10.11.x crash on lyonesse is investigated."
+    },
+    {
+      "matchManagers": [
+        "flux",
+        "helm-values",
+        "kubernetes",
+        "custom.regex"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^flux/.+\\.ya?ml$",
+        "^ansible/roles/docker_host/templates/docker-compose\\.yml\\.j2$",
+        "^compose\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "repository:\\s*(?<depName>[^\\s]+)\\s*\\n\\s*tag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?",
+        "image:\\s*(?<depName>[^:\\s]+(?:/[^:\\s]+)+):(?<currentValue>[^\\s\"']+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "flux": {
+    "managerFilePatterns": [
+      "/^flux/.+\\.ya?ml$/"
+    ]
+  },
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^flux/.+\\.ya?ml$/"
+    ]
+  },
+  "helm-values": {
+    "managerFilePatterns": [
+      "/^flux/.+\\.ya?ml$/"
+    ]
+  }
+}

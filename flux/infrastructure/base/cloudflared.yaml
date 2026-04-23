@@ -21,7 +21,7 @@ spec:
           main:
             image:
               repository: cloudflare/cloudflared
-              tag: "2024.10.0"
+              tag: "2026.3.0"
             args:
               - tunnel
               - --no-autoupdate
@@ -31,4 +31,5 @@ spec:
                   name: cloudflared-tunnel
     service:
       main:
+        controller: main
         enabled: false

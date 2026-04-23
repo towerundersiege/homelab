@@ -6,7 +6,7 @@ This repo manages the current `towerundersiege.com` homelab running on one Proxm
 - `penzance.vm.towerundersiege.com` (`192.168.1.101`): Debian utility VM
 - `lyonesse-cp-01.vm.towerundersiege.com` (`192.168.1.102`): single-node `k3s` cluster control plane
 
-The cluster name is `lyonesse`. Right now it is intentionally a single-node cluster because the box is still memory-constrained until the RAM upgrade lands.
+The cluster name is `lyonesse`. Right now it is intentionally a single-node cluster on the upgraded 32 GB Proxmox host.
 
 ## Current State
 
@@ -18,16 +18,16 @@ The cluster name is `lyonesse`. Right now it is intentionally a single-node clus
   - `/srv/shared/k8s/lyonesse`
 - `penzance` runs:
   - Pi-hole
-  - Caddy
-  - cloudflared
 - `lyonesse` runs:
   - `k3s`
   - `Cilium`
   - `Flux`
+  - `cert-manager`
   - `ExternalDNS` for Pi-hole
   - `external-secrets`
   - `nfs-subdir-external-provisioner`
   - Jellyfin
+  - Isambard
 
 ## Topology
 
@@ -57,7 +57,6 @@ The cluster name is `lyonesse`. Right now it is intentionally a single-node clus
 It owns VM-specific state under:
 
 - `/srv/shared/vm/penzance/config/pihole`
-- `/srv/shared/vm/penzance/config/caddy`
 
 ### Kubernetes
 
@@ -74,7 +73,7 @@ Current node list:
   - VMID: `111`
   - IP: `192.168.1.102`
   - CPU: `2`
-  - Memory: `4096 MB`
+  - Memory: `8192 MB`
   - Disk: `48 GB`
 
 The old worker definitions were removed from the active configuration. The repo currently models a single-node cluster on purpose.
@@ -90,19 +89,25 @@ Important local records:
 - `lyonesse-cp-01.vm.towerundersiege.com` -> `192.168.1.102`
 - `api.lyonesse.k8s.towerundersiege.com` -> `192.168.1.102`
 - `ingress.lyonesse.k8s.towerundersiege.com` -> `192.168.1.110`
-- `pihole.towerundersiege.com` -> `192.168.1.101`
+- `pihole.towerundersiege.com` -> `192.168.1.110`
 - `jellyfin.towerundersiege.com` -> `192.168.1.110`
+- `isambard.towerundersiege.com` -> `192.168.1.110`
+- `isambard-browser.towerundersiege.com` -> `192.168.1.110`
 
 Exposure model:
 
 - `pihole.towerundersiege.com`
-  - served by Caddy on `penzance`
-  - proxied to the Pi-hole container
-  - TLS handled by Caddy with the Cloudflare DNS challenge
+  - local DNS points to the Cilium ingress IP, `192.168.1.110`
+  - Cilium terminates TLS with the cert-manager-managed `pihole-tls` secret
+  - Cilium forwards to the Pi-hole web port on `penzance` at `192.168.1.101:8080`
+  - direct break-glass access remains available at `http://192.168.1.101:8080`
 - `jellyfin.towerundersiege.com`
-  - local DNS points to the cluster ingress IP
-  - public access comes through `penzance` and cloudflared/Caddy
-  - cluster routing is handled by Cilium ingress
+  - local DNS points to the Cilium ingress IP, `192.168.1.110`
+  - TLS terminates in-cluster through Cilium using the cert-manager-managed `cilium-apps-tls` secret
+- `isambard.towerundersiege.com` and `isambard-browser.towerundersiege.com`
+  - local DNS points to the Cilium ingress IP, `192.168.1.110`
+  - TLS terminates in-cluster through Cilium using the cert-manager-managed `cilium-apps-tls` secret
+  - Isambard's VPN sidecar allows inbound app and browser ports for cluster ingress traffic
 
 ## Storage Layout
 
@@ -198,11 +203,19 @@ Secrets are not stored in tracked files. They live in the repo-local `pass` stor
 Expected entries:
 
 - `homelab/proxmox/password`
-- `homelab/cloudflare/caddy_api_token`
+- `homelab/cloudflare/dns_api_token`
+- `homelab/cloudflare/terraform_api_token`
+- `homelab/cloudflare/account_id`
+- `homelab/cloudflare/zone_id`
+- `homelab/cloudflare/tunnel_id`
 - `homelab/cloudflare/tunnel_token`
 - `homelab/pihole/web_password`
 - `homelab/vault/root_token`
 - `homelab/k3s/server_node_token`
+- `homelab/hosts/penzance/ryan_password`
+- `homelab/hosts/lyonesse-cp-01/ryan_password`
+- `homelab/ssh/penzance_ryan_ed25519/passphrase`
+- `homelab/ssh/lyonesse-cp-01_ryan_ed25519/passphrase`
 
 Rendered secret outputs:
 
@@ -246,11 +259,20 @@ There are also older `lyonesse-w-*` keys still present locally from the earlier 
 Usage model:
 
 - `*_automation_ed25519`
-  - used by Terraform/Ansible/CLI SSH
+  - used by Terraform, Ansible, and non-interactive repo automation
 - `*_ryan_ed25519`
+  - default identity for `./scripts/homelab ssh ...`
   - manual operator access as `ryan`
 - `cornwall_root_ed25519`
   - root access to the Proxmox host
+
+Wrapper examples:
+
+```sh
+./scripts/homelab ssh penzance
+./scripts/homelab ssh lyonesse-cp-01
+./scripts/homelab ssh --identity automation lyonesse-cp-01
+```
 
 ## Terraform
 
@@ -262,7 +284,7 @@ Current active VM definitions in `terraform/terraform.tfvars`:
 Current desired sizing:
 
 - `penzance`: `1024 MB`
-- `lyonesse-cp-01`: `4096 MB`
+- `lyonesse-cp-01`: `8192 MB`
 
 Useful commands:
 
@@ -317,16 +339,20 @@ Flux is bootstrapped against:
 Current active cluster baseline includes:
 
 - Cilium
+- cert-manager
 - Pi-hole-driven `ExternalDNS`
 - `external-secrets`
 - NFS provisioner
 - Jellyfin
+- Isambard
 
-Monitoring and other heavier app workloads were intentionally kept out of the active baseline while the machine is still resource-constrained.
+Dependency updates are managed by Renovate. The scheduled workflow runs on Saturday mornings and opens or automerges eligible non-major updates for Helm releases and container image tags.
+
+Monitoring and other heavier app workloads are not part of the active baseline.
 
 ## Current Constraints
 
-- The box is still running on the pre-upgrade RAM at the time of writing, so `lyonesse` stays single-node for stability.
+- `lyonesse` stays single-node for now, with `8192 MB` allocated after the host RAM upgrade.
 - The cluster can become sluggish after forced VM power cycles; Cilium and app pods may need time to recover.
 - Pi-hole on `penzance` is the local DNS dependency for the rest of the environment.
 

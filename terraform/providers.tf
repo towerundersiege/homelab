@@ -1,3 +1,7 @@
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
 provider "proxmox" {
   endpoint = var.proxmox_endpoint
   username = var.proxmox_username

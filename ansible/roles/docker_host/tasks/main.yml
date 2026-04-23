@@ -61,9 +61,6 @@
     - "{{ docker_stack_root }}"
     - "{{ penzance_data_root }}"
     - "{{ penzance_data_root }}/config"
-    - "{{ penzance_data_root }}/config/caddy"
-    - "{{ penzance_data_root }}/config/caddy/data"
-    - "{{ penzance_data_root }}/config/caddy/config"
     - "{{ penzance_data_root }}/config/pihole"
     - "{{ penzance_data_root }}/config/pihole/dnsmasq.d"
     - "{{ penzance_data_root }}/media"
@@ -75,12 +72,27 @@
     - "{{ shared_storage_media_root }}/music"
     - "{{ shared_storage_media_root }}/tv"
 
-- name: Render penzance Caddyfile
-  ansible.builtin.template:
-    src: Caddyfile.j2
-    dest: "{{ penzance_caddyfile_path }}"
-    mode: "0644"
-  notify: Restart caddy container
+- name: Remove conflicting Pi-hole custom.list overrides
+  ansible.builtin.lineinfile:
+    path: "{{ penzance_data_root }}/config/pihole/hosts/custom.list"
+    regexp: "^.*\\s{{ item.domain | regex_escape }}$"
+    state: absent
+    create: false
+  loop: "{{ pihole_dns_records }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  notify: Restart pihole container
+
+- name: Remove conflicting Pi-hole TOML host overrides
+  ansible.builtin.lineinfile:
+    path: "{{ penzance_data_root }}/config/pihole/pihole.toml"
+    regexp: "^.*{{ item.domain | regex_escape }}.*$"
+    state: absent
+    create: false
+  loop: "{{ pihole_dns_records }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  notify: Restart pihole container
 
 - name: Render Pi-hole local DNS records
   ansible.builtin.template:
@@ -99,3 +111,14 @@
   community.docker.docker_compose_v2:
     project_src: "{{ docker_stack_root }}"
     state: present
+    remove_orphans: true
+
+- name: Remove retired Caddy container
+  community.docker.docker_container:
+    name: caddy
+    state: absent
+
+- name: Remove retired cloudflared container
+  community.docker.docker_container:
+    name: cloudflared
+    state: absent

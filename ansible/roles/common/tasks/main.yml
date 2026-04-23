@@ -75,9 +75,20 @@
     name: "{{ ryan_user }}"
     shell: "{{ ryan_shell }}"
     groups: "{{ ryan_groups | join(',') }}"
+    password: "{{ ryan_password_hashes[inventory_hostname] }}"
+    update_password: always
     append: true
     create_home: true
     state: present
+  when: "'proxmox_hosts' not in group_names"
+
+- name: Ensure ryan has sudo access
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ ryan_user }}"
+    mode: "0440"
+    content: |
+      {{ ryan_user }} ALL=(ALL:ALL) ALL
+    validate: /usr/sbin/visudo -cf %s
   when: "'proxmox_hosts' not in group_names"
 
 - name: Ensure ryan .ssh directory exists

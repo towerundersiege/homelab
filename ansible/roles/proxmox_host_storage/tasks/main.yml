@@ -66,9 +66,6 @@
     - vm
     - vm/penzance
     - vm/penzance/config
-    - vm/penzance/config/caddy
-    - vm/penzance/config/caddy/data
-    - vm/penzance/config/caddy/config
     - vm/penzance/config/pihole
     - vm/penzance/config/pihole/dnsmasq.d
     - vm/penzance/downloads

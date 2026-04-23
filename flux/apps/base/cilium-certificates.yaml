@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-apps
+  namespace: apps
+spec:
+  secretName: cilium-apps-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-cloudflare
+  dnsNames:
+    - jellyfin.towerundersiege.com
+    - isambard.towerundersiege.com
+    - isambard-browser.towerundersiege.com

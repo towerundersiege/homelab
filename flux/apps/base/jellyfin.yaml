@@ -4,8 +4,27 @@ metadata:
   name: jellyfin
   namespace: flux-system
 spec:
+  releaseName: jellyfin
   interval: 15m
   targetNamespace: apps
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Ingress
+              name: jellyfin
+            patch: |
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: jellyfin
+                annotations:
+                  external-dns.alpha.kubernetes.io/target: 192.168.1.110
+              spec:
+                tls:
+                  - secretName: cilium-apps-tls
+                    hosts:
+                      - jellyfin.towerundersiege.com
   chart:
     spec:
       chart: app-template
@@ -15,6 +34,7 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
+    fullnameOverride: jellyfin
     controllers:
       main:
         containers:
@@ -22,6 +42,8 @@ spec:
             image:
               repository: jellyfin/jellyfin
               tag: "10.10.1"
+            env:
+              JELLYFIN_PublishedServerUrl: https://jellyfin.towerundersiege.com
     service:
       main:
         controller: main
@@ -33,6 +55,8 @@ spec:
       main:
         enabled: true
         className: cilium
+        annotations:
+          external-dns.alpha.kubernetes.io/target: 192.168.1.110
         hosts:
           - host: jellyfin.towerundersiege.com
             paths:
@@ -44,10 +68,10 @@ spec:
     persistence:
       config:
         enabled: true
-        type: persistentVolumeClaim
-        accessMode: ReadWriteOnce
-        storageClass: nfs-client
-        size: 10Gi
+        type: custom
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: apps-jellyfin-config
         globalMounts:
           - path: /config
       media:

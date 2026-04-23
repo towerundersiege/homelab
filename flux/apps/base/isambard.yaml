@@ -1,0 +1,146 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: isambard
+  namespace: flux-system
+spec:
+  releaseName: isambard
+  interval: 15m
+  targetNamespace: apps
+  chart:
+    spec:
+      chart: ./charts/isambard
+      sourceRef:
+        kind: GitRepository
+        name: isambard
+        namespace: flux-system
+  valuesFrom:
+    - kind: Secret
+      name: isambard-values
+      valuesKey: values.yaml
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: isambard
+            patch: |
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: isambard
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: gluetun
+                        env:
+                          - name: FIREWALL_INPUT_PORTS
+                            value: "8765,8080"
+          - target:
+              kind: Ingress
+              name: isambard-app
+            patch: |
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: isambard-app
+                annotations:
+                  external-dns.alpha.kubernetes.io/target: 192.168.1.110
+              spec:
+                tls:
+                  - secretName: cilium-apps-tls
+                    hosts:
+                      - isambard.towerundersiege.com
+          - target:
+              kind: Ingress
+              name: isambard-browser
+            patch: |
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: isambard-browser
+                annotations:
+                  external-dns.alpha.kubernetes.io/target: 192.168.1.110
+              spec:
+                tls:
+                  - secretName: cilium-apps-tls
+                    hosts:
+                      - isambard-browser.towerundersiege.com
+  values:
+    fullnameOverride: isambard
+    images:
+      app:
+        repository: ghcr.io/towerundersiege/isambard-app
+        tag: latest
+        pullPolicy: Always
+      browser:
+        repository: ghcr.io/towerundersiege/isambard-browser
+        tag: latest
+        pullPolicy: Always
+      guacd:
+        repository: guacamole/guacd
+        tag: "1.6.0"
+      guacamole:
+        repository: guacamole/guacamole
+        tag: "1.6.0"
+      gluetun:
+        repository: qmcgaw/gluetun
+        tag: v3.41.1
+    gluetun:
+      enabled: true
+      env:
+        VPN_SERVICE_PROVIDER: mullvad
+        VPN_TYPE: wireguard
+        FIREWALL_INPUT_PORTS: "8765,8080"
+    app:
+      env:
+        BROWSER_URL: https://isambard-browser.towerundersiege.com
+        BROWSER_USER: guac
+        BROWSER_PASSWORD: guac
+    guacamole:
+      env:
+        WEBAPP_CONTEXT: ROOT
+        GUACD_HOSTNAME: 127.0.0.1
+      userMapping:
+        username: guac
+        password: guac
+        connectionName: Remote Chromium
+        hostname: 127.0.0.1
+        port: 5900
+        vncPassword: browserpass
+        colorDepth: 16
+        disableDisplayResize: true
+    persistence:
+      downloads:
+        enabled: false
+    ingress:
+      enabled: true
+      className: cilium
+      annotations:
+        external-dns.alpha.kubernetes.io/target: 192.168.1.110
+      app:
+        host: isambard.towerundersiege.com
+      browser:
+        host: isambard-browser.towerundersiege.com
+    resources:
+      app:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      browser:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      guacd:
+        requests:
+          cpu: 25m
+          memory: 64Mi
+      guacamole:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      gluetun:
+        requests:
+          cpu: 25m
+          memory: 128Mi

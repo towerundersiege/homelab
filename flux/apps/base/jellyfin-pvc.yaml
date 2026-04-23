@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apps-jellyfin-config
+  namespace: apps
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: nfs-client
+  volumeMode: Filesystem
+  volumeName: pvc-da265a74-8d68-4827-9bd5-4bdd72658f91

@@ -13,11 +13,19 @@ This repository now expects operational secrets to live outside Git in a repo-lo
 Recommended `pass` entries:
 
 - `homelab/proxmox/password`
-- `homelab/cloudflare/caddy_api_token`
+- `homelab/cloudflare/dns_api_token`
+- `homelab/cloudflare/terraform_api_token`
+- `homelab/cloudflare/account_id`
+- `homelab/cloudflare/zone_id`
+- `homelab/cloudflare/tunnel_id`
 - `homelab/cloudflare/tunnel_token`
 - `homelab/pihole/web_password`
 - `homelab/vault/root_token`
 - `homelab/k3s/server_node_token`
+- `homelab/hosts/penzance/ryan_password`
+- `homelab/hosts/lyonesse-cp-01/ryan_password`
+- `homelab/ssh/penzance_ryan_ed25519/passphrase`
+- `homelab/ssh/lyonesse-cp-01_ryan_ed25519/passphrase`
 
 Default local pass-store path:
 
@@ -39,11 +47,19 @@ Seed the required entries:
 
 ```sh
 PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/proxmox/password
-PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/caddy_api_token
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/dns_api_token
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/terraform_api_token
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/account_id
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/zone_id
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/tunnel_id
 PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/cloudflare/tunnel_token
 PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/pihole/web_password
 PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/vault/root_token
 PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/k3s/server_node_token
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/hosts/penzance/ryan_password
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/hosts/lyonesse-cp-01/ryan_password
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/ssh/penzance_ryan_ed25519/passphrase
+PASSWORD_STORE_DIR="$PWD/.homelab-pass" pass insert homelab/ssh/lyonesse-cp-01_ryan_ed25519/passphrase
 ```
 
 ## Rendering Runtime Secret Files
