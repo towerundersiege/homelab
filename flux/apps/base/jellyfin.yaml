@@ -43,6 +43,10 @@ spec:
               repository: jellyfin/jellyfin
               tag: "10.11.8"
             env:
+              JELLYFIN_CONFIG_DIR: /config/config
+              JELLYFIN_DATA_DIR: /config/data
+              JELLYFIN_LOG_DIR: /config/log
+              JELLYFIN_CACHE_DIR: /cache
               JELLYFIN_PublishedServerUrl: https://jellyfin.towerundersiege.com
     service:
       main:
