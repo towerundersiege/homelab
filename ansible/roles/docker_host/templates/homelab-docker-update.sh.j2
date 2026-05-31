@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+compose_file="{{ penzance_compose_file }}"
+project_dir="{{ docker_stack_root }}"
+
+if [[ ! -f "$compose_file" ]]; then
+  echo "compose file not found: $compose_file" >&2
+  exit 0
+fi
+
+cd "$project_dir"
+docker compose -f "$compose_file" pull
+docker compose -f "$compose_file" up -d --remove-orphans

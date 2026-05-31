@@ -44,14 +44,6 @@ glo() {
   git log --oneline -$([[ -z $1 ]] && echo 5 || echo $1)
 }
 
-alias k="kubectl"
-alias kg="kubectl get"
-alias kgp="kubectl get pod"
-alias kd="kubectl describe"
-alias kdp="kubectl describe pod"
-alias kgc="kubectl config get-contexts"
-alias kuc="kubectl config use-context"
-alias knd="kubectl config set-context --current --namespace"
 
 export FZF_DEFAULT_OPTS="--height=40% --layout=reverse -m --border=rounded --no-separator --no-scrollbar"
 

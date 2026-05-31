@@ -1,0 +1,22 @@
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "1001:{{ homelab_shared_gid }}"
+    healthcheck:
+      disable: true
+    command:
+      - --address
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --root
+      - /srv/shared
+      - --database
+      - /database/filebrowser.db
+    volumes:
+      - "{{ shared_storage_mountpoint }}:/srv/shared"
+      - "{{ penzance_data_root }}/config/filebrowser:/database"
+      - "{{ penzance_data_root }}/config/filebrowser:/config"
+    networks:
+      - edge

@@ -1,0 +1,12 @@
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    depends_on:
+      - caddy
+    environment:
+      TZ: "{{ timezone }}"
+      TUNNEL_TOKEN: "{{ cloudflared_tunnel_token }}"
+    command: tunnel --no-autoupdate run
+    networks:
+      - edge

@@ -1,28 +1,15 @@
 networks:
   edge:
     driver: bridge
+  media:
+    driver: bridge
+{% if homelab_gluetun_enabled %}
+  vpn:
+    driver: bridge
+{% endif %}
 
 services:
-  pihole:
-    image: pihole/pihole:latest
-    container_name: pihole
-    restart: unless-stopped
-    environment:
-      TZ: "{{ timezone }}"
-      FTLCONF_webserver_api_password: "{{ pihole_web_password }}"
-      FTLCONF_dns_listeningMode: "all"
-      FTLCONF_webserver_port: "8080o,[::]:8080o"
-      FTLCONF_misc_etc_dnsmasq_d: "true"
-    volumes:
-      - "{{ penzance_data_root }}/config/pihole:/etc/pihole"
-      - "{{ penzance_data_root }}/config/pihole/dnsmasq.d:/etc/dnsmasq.d"
-    cap_add:
-      - NET_ADMIN
-      - SYS_TIME
-      - SYS_NICE
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "8080:8080/tcp"
-    networks:
-      - edge
+{% for service_template in homelab_docker_service_templates %}
+{% include "compose-services/" ~ service_template %}
+{{ "\n" }}
+{% endfor %}

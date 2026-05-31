@@ -40,6 +40,12 @@ variable "cloudflare_tunnel_manage_config" {
   default     = false
 }
 
+variable "cloudflare_public_hostnames" {
+  description = "Public hostnames exposed through Cloudflare Tunnel ingress"
+  type        = list(string)
+  default     = []
+}
+
 variable "cloudflare_manage_zone_rules" {
   description = "Whether Terraform should manage Cloudflare zone rulesets for Jellyfin"
   type        = bool
@@ -76,10 +82,10 @@ variable "cloudflare_zero_trust_email_allowlist" {
   default     = ["info@towerundersiege.com"]
 }
 
-variable "cloudflare_private_network_cidr" {
-  description = "Private network CIDR routed through the Cloudflare Tunnel for homelab access"
-  type        = string
-  default     = "192.168.1.0/24"
+variable "cloudflare_private_network_cidrs" {
+  description = "Private network CIDRs routed through the Cloudflare Tunnel for Zero Trust homelab access"
+  type        = list(string)
+  default     = ["192.168.1.0/24"]
 }
 
 variable "cloudflare_private_dns_suffixes" {
@@ -191,6 +197,8 @@ variable "vm_definitions" {
     cpu_cores       = number
     memory_mb       = number
     disk_gb         = number
+    started         = optional(bool, true)
+    on_boot         = optional(bool, true)
     tags            = list(string)
     ssh_public_keys = list(string)
   }))

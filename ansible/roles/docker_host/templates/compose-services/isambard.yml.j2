@@ -1,0 +1,26 @@
+{% if gluetun_wireguard_private_key | length > 0 and gluetun_wireguard_addresses | length > 0 and isambard_jellyfin_api_key | length > 0 and isambard_tmdb_api_key | length > 0 %}
+  isambard:
+    image: ghcr.io/towerundersiege/isambard-app:latest
+    platform: linux/amd64
+    container_name: isambard
+    restart: unless-stopped
+    pull_policy: always
+    depends_on:
+      - gluetun
+    network_mode: "service:gluetun"
+    environment:
+      BROWSER_URL: "about:blank"
+      JELLYFIN_URL: "https://{{ jellyfin_local_domain }}"
+      JELLYFIN_API_KEY: "{{ isambard_jellyfin_api_key }}"
+      TMDB_API_KEY: "{{ isambard_tmdb_api_key }}"
+      MULLVAD_ENFORCE: "false"
+      STREAM_REVIVE_SECONDS: "180"
+      STREAM_ATTEMPT_TIMEOUT_SECONDS: "300"
+      TASK_HISTORY_RETENTION_DAYS: "1"
+      TV_FOLLOW_POLL_SECONDS: "21600"
+      TV_FOLLOW_RETRY_SECONDS: "86400"
+      YT_DLP_RETRIES: "3"
+      YT_DLP_FRAGMENT_RETRIES: "6"
+    volumes:
+      - "{{ shared_storage_media_root }}:/app/downloads"
+{% endif %}

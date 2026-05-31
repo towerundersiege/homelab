@@ -2,9 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PASS_STORE_DIR="${HOMELAB_PASSWORD_STORE_DIR:-$ROOT_DIR/.homelab-pass}"
-PASS_PREFIX="${HOMELAB_PASS_PREFIX:-homelab}"
-export PASSWORD_STORE_DIR="$PASS_STORE_DIR"
+PASS_STORE_DIR="${HOMELAB_PASSWORD_STORE_DIR:-}"
+PASS_PREFIX="${HOMELAB_PASS_PREFIX:-homelab/penzance}"
+if [[ -n "$PASS_STORE_DIR" ]]; then
+  export PASSWORD_STORE_DIR="$PASS_STORE_DIR"
+fi
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -27,6 +29,7 @@ pass_get_optional() {
 
 require_cmd pass
 require_cmd openssl
+require_cmd htpasswd
 
 mkdir -p "$ROOT_DIR/terraform"
 mkdir -p "$ROOT_DIR/ansible/inventories/lab/group_vars"
@@ -42,12 +45,14 @@ cloudflare_account_id="$(pass_get_optional "$PASS_PREFIX/cloudflare/account_id")
 cloudflare_zone_id="$(pass_get_optional "$PASS_PREFIX/cloudflare/zone_id")"
 cloudflare_tunnel_id="$(pass_get_optional "$PASS_PREFIX/cloudflare/tunnel_id")"
 pihole_web_password="$(pass_get "$PASS_PREFIX/pihole/web_password")"
-vault_root_token="$(pass_get "$PASS_PREFIX/vault/root_token")"
-k3s_server_node_token="$(pass_get "$PASS_PREFIX/k3s/server_node_token")"
-penzance_ryan_password="$(pass_get "$PASS_PREFIX/hosts/penzance/ryan_password")"
-lyonesse_ryan_password="$(pass_get "$PASS_PREFIX/hosts/lyonesse-cp-01/ryan_password")"
+portainer_admin_password="$(pass_get "$PASS_PREFIX/portainer/admin_password")"
+portainer_admin_password_hash="$(htpasswd -nbB admin "$portainer_admin_password" | cut -d: -f2-)"
+isambard_jellyfin_api_key="$(pass_get_optional "$PASS_PREFIX/isambard/jellyfin_api_key")"
+isambard_tmdb_api_key="$(pass_get_optional "$PASS_PREFIX/isambard/tmdb_api_key")"
+gluetun_wireguard_private_key="$(pass_get_optional "$PASS_PREFIX/gluetun/wireguard_private_key")"
+gluetun_wireguard_addresses="$(pass_get_optional "$PASS_PREFIX/gluetun/wireguard_addresses")"
+penzance_ryan_password="$(pass_get "$PASS_PREFIX/hosts/ryan_password")"
 penzance_ryan_password_hash="$(printf '%s' "$penzance_ryan_password" | openssl passwd -6 -stdin)"
-lyonesse_ryan_password_hash="$(printf '%s' "$lyonesse_ryan_password" | openssl passwd -6 -stdin)"
 
 cat >"$ROOT_DIR/terraform/terraform.auto.tfvars.json" <<EOF
 {
@@ -61,11 +66,15 @@ EOF
 
 cat >"$ROOT_DIR/ansible/inventories/lab/group_vars/all.secrets.yml" <<EOF
 pihole_web_password: "${pihole_web_password}"
-vault_root_token: "${vault_root_token}"
-k3s_server_node_token: "${k3s_server_node_token}"
+portainer_admin_password_hash: "${portainer_admin_password_hash}"
+cloudflare_dns_api_token: "${cloudflare_dns_api_token}"
+cloudflared_tunnel_token: "${cloudflared_tunnel_token}"
+isambard_jellyfin_api_key: "${isambard_jellyfin_api_key}"
+isambard_tmdb_api_key: "${isambard_tmdb_api_key}"
+gluetun_wireguard_private_key: "${gluetun_wireguard_private_key}"
+gluetun_wireguard_addresses: "${gluetun_wireguard_addresses}"
 ryan_password_hashes:
   penzance: "${penzance_ryan_password_hash}"
-  lyonesse-cp-01: "${lyonesse_ryan_password_hash}"
 EOF
 
 cat >"$ROOT_DIR/.env.homelab" <<EOF

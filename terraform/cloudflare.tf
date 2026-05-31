@@ -1,12 +1,6 @@
 locals {
-  jellyfin_public_hostname         = "jellyfin.towerundersiege.com"
-  isambard_public_hostname         = "isambard.towerundersiege.com"
-  isambard_browser_public_hostname = "isambard-browser.towerundersiege.com"
-  tunnel_public_hostnames = [
-    local.jellyfin_public_hostname,
-    local.isambard_public_hostname,
-    local.isambard_browser_public_hostname,
-  ]
+  jellyfin_public_hostname = "jellyfin.towerundersiege.com"
+  tunnel_public_hostnames  = var.cloudflare_public_hostnames
 }
 
 resource "cloudflare_ruleset" "jellyfin_geo_restriction" {
@@ -97,7 +91,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "penzance_public_ingr
       [
         for hostname in local.tunnel_public_hostnames : {
           hostname = hostname
-          service  = "https://cilium-ingress.kube-system.svc.cluster.local"
+          service  = "https://caddy"
           origin_request = {
             no_tls_verify      = false
             origin_server_name = hostname
@@ -116,42 +110,26 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "penzance_public_ingr
   }
 }
 
-resource "cloudflare_dns_record" "isambard_public" {
-  zone_id = var.cloudflare_zone_id
-  name    = "isambard"
-  content = "${var.cloudflare_tunnel_id}.cfargotunnel.com"
-  type    = "CNAME"
-  ttl     = 1
-  proxied = true
-}
-
-resource "cloudflare_dns_record" "isambard_browser_public" {
-  zone_id = var.cloudflare_zone_id
-  name    = "isambard-browser"
-  content = "${var.cloudflare_tunnel_id}.cfargotunnel.com"
-  type    = "CNAME"
-  ttl     = 1
-  proxied = true
-}
-
 resource "cloudflare_zero_trust_tunnel_cloudflared_route" "homelab_lan" {
-  count = var.cloudflare_enabled ? 1 : 0
+  for_each = var.cloudflare_enabled && var.cloudflare_manage_warp_profile ? toset(var.cloudflare_private_network_cidrs) : toset([])
 
   account_id = var.cloudflare_account_id
   tunnel_id  = var.cloudflare_tunnel_id
-  network    = var.cloudflare_private_network_cidr
+  network    = each.value
   comment    = "Homelab LAN route for remote private access"
 }
 
 resource "cloudflare_zero_trust_access_application" "homelab_private_network" {
-  count = var.cloudflare_enabled ? 1 : 0
+  count = var.cloudflare_enabled && var.cloudflare_manage_warp_profile ? 1 : 0
 
   account_id = var.cloudflare_account_id
   name       = "Homelab Private Network"
   type       = "self_hosted"
+  enable_binding_cookie      = false
+  options_preflight_bypass    = false
   destinations = [
-    {
-      cidr = var.cloudflare_private_network_cidr
+    for cidr in var.cloudflare_private_network_cidrs : {
+      cidr = cidr
       type = "private"
     }
   ]
@@ -174,6 +152,11 @@ resource "cloudflare_zero_trust_access_application" "homelab_private_network" {
   ]
 }
 
+moved {
+  from = cloudflare_zero_trust_tunnel_cloudflared_route.homelab_lan[0]
+  to   = cloudflare_zero_trust_tunnel_cloudflared_route.homelab_lan["192.168.1.0/24"]
+}
+
 resource "cloudflare_zero_trust_device_custom_profile" "homelab_remote_access" {
   count = var.cloudflare_enabled && var.cloudflare_manage_warp_profile ? 1 : 0
 
@@ -187,6 +170,13 @@ resource "cloudflare_zero_trust_device_custom_profile" "homelab_remote_access" {
   service_mode_v2 = {
     mode = "warp"
   }
+
+  include = [
+    for cidr in var.cloudflare_private_network_cidrs : {
+      address     = cidr
+      description = "Route ${cidr} through WARP for homelab access"
+    }
+  ]
 }
 
 resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "homelab_internal_dns" {

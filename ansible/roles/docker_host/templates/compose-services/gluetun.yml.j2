@@ -1,0 +1,17 @@
+{% if gluetun_wireguard_private_key | length > 0 and gluetun_wireguard_addresses | length > 0 %}
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.1
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      TZ: "{{ timezone }}"
+      VPN_SERVICE_PROVIDER: "mullvad"
+      VPN_TYPE: "wireguard"
+      WIREGUARD_PRIVATE_KEY: "{{ gluetun_wireguard_private_key }}"
+      WIREGUARD_ADDRESSES: "{{ gluetun_wireguard_addresses }}"
+      FIREWALL_INPUT_PORTS: "8765"
+    networks:
+      - vpn
+{% endif %}

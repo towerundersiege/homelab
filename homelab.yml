@@ -1,0 +1,150 @@
+homelab:
+  domain: towerundersiege.com
+  timezone: Europe/London
+  runtime_dir: /tmp/homelab
+  ssh_key_dir: /tmp/homelab/ssh
+  shared_group: homelab
+  shared_gid: 2100
+
+network:
+  cidr: 192.168.1.0/24
+  gateway: 192.168.1.254
+  dns_servers:
+    - 192.168.1.101
+    - 1.1.1.1
+
+proxmox:
+  host: cornwall
+  address: 192.168.1.100
+  endpoint: https://192.168.1.100:8006/api2/json
+  username: terraform@pve
+  node_name: cornwall
+  template_id: 9000
+  storage: local-lvm
+  cloud_init_storage: local-lvm
+  nfs_export: 192.168.1.100:/
+  storage_disk_uuids:
+    - ca9854ac-263a-43c1-a64d-7f7554bebf2c
+
+packages:
+  base:
+    - apt-transport-https
+    - unattended-upgrades
+    - apt-listchanges
+    - ca-certificates
+    - dnsutils
+    - curl
+    - ethtool
+    - git
+    - gpg
+    - htop
+    - iftop
+    - iperf3
+    - iproute2
+    - iputils-ping
+    - jq
+    - less
+    - net-tools
+    - nmap
+    - nfs-common
+    - rsync
+    - tcpdump
+    - tmux
+    - traceroute
+    - vim
+    - zsh
+    - zsh-syntax-highlighting
+
+users:
+  ryan:
+    shell: /usr/bin/zsh
+    groups:
+      - sudo
+      - homelab
+    packages:
+      - fzf
+
+vms:
+  penzance:
+    role: utility
+    address: 192.168.1.101
+    vm_id: 100
+    cores: 4
+    memory_mb: 16384
+    disk_gb: 48
+    started: true
+    on_boot: true
+    tags:
+      - terraform
+      - utility
+      - docker
+    ssh:
+      user: ryan
+    docker:
+      stack_root: /opt/penzance
+      data_root: /var/lib/penzance
+      jellyfin_config_root: /var/lib/penzance/config/jellyfin
+
+services:
+  pihole:
+    host: penzance
+    compose_template: pihole.yml.j2
+    gluetun: false
+  proxmox:
+    host: penzance
+    gluetun: false
+  jellyfin:
+    host: penzance
+    compose_template: jellyfin.yml.j2
+    cloudflare_public: true
+    gluetun: false
+  navidrome:
+    host: penzance
+    compose_template: navidrome.yml.j2
+    cloudflare_public: true
+    gluetun: false
+  syncthing:
+    host: penzance
+    compose_template: syncthing.yml.j2
+    gluetun: false
+  filebrowser:
+    host: penzance
+    compose_template: filebrowser.yml.j2
+    gluetun: false
+  jellyfin_firetv:
+    host: penzance
+    gluetun: false
+  isambard:
+    host: penzance
+    compose_template: isambard.yml.j2
+  portainer:
+    host: penzance
+    compose_template: portainer.yml.j2
+    gluetun: false
+  caddy:
+    host: penzance
+    compose_template: caddy.yml.j2
+    local: false
+    gluetun: false
+  cloudflared:
+    host: penzance
+    compose_template: cloudflared.yml.j2
+    local: false
+    gluetun: false
+
+cloudflare:
+  enabled: true
+  manage_zone_rules: false
+  manage_geo_restriction: false
+  manage_cache_rule: false
+  manage_rate_limit: false
+  manage_warp_profile: true
+  manage_tunnel_config: true
+  private_network_cidrs:
+    - 192.168.1.0/24
+  private_dns_suffixes:
+    - towerundersiege.com
+  private_dns_servers:
+    - 192.168.1.101
+  zero_trust_email_allowlist:
+    - info@towerundersiege.com

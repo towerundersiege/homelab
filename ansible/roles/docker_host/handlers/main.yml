@@ -8,3 +8,8 @@
   community.docker.docker_container:
     name: pihole
     restart: true
+
+- name: Restart caddy container
+  community.docker.docker_container:
+    name: caddy
+    restart: true

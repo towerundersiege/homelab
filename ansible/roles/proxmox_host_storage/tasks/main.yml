@@ -27,6 +27,7 @@
   ansible.builtin.file:
     path: "{{ proxmox_storage_pool_path }}"
     state: directory
+    group: "{{ homelab_shared_group }}"
     mode: "0775"
 
 - name: Mount mergerfs pool
@@ -61,7 +62,8 @@
   ansible.builtin.file:
     path: "{{ proxmox_storage_pool_path }}/{{ item }}"
     state: directory
-    mode: "0775"
+    group: "{{ homelab_shared_group }}"
+    mode: "2775"
   loop:
     - vm
     - vm/penzance
@@ -75,9 +77,46 @@
     - media/music
     - media/movies
     - media/tv
-    - k8s
-    - k8s/lyonesse
-    - k8s/lyonesse/apps
-    - k8s/lyonesse/logs
-    - k8s/lyonesse/metrics
+    - sync
     - backups
+
+- name: Ensure shared content trees use the homelab group
+  ansible.builtin.command:
+    argv:
+      - chgrp
+      - -R
+      - "{{ homelab_shared_group }}"
+      - "{{ proxmox_storage_pool_path }}/{{ item }}"
+  loop:
+    - media
+    - sync
+  changed_when: false
+
+- name: Ensure shared content trees are group writable and traversable
+  ansible.builtin.command:
+    argv:
+      - chmod
+      - -R
+      - u+rwX,g+rwX,o+rX
+      - "{{ proxmox_storage_pool_path }}/{{ item }}"
+  loop:
+    - media
+    - sync
+  changed_when: false
+
+- name: Ensure shared content directories inherit the homelab group
+  ansible.builtin.command:
+    argv:
+      - find
+      - "{{ proxmox_storage_pool_path }}/{{ item }}"
+      - -type
+      - d
+      - -exec
+      - chmod
+      - g+s
+      - "{}"
+      - +
+  loop:
+    - media
+    - sync
+  changed_when: false

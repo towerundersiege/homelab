@@ -1,0 +1,14 @@
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+      JELLYFIN_PublishedServerUrl: "https://{{ jellyfin_local_domain }}"
+    volumes:
+      - "{{ jellyfin_config_root }}:/config"
+      - "{{ shared_storage_media_root }}:/data:ro"
+    networks:
+      - media

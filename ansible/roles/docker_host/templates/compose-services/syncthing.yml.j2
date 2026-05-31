@@ -1,0 +1,20 @@
+  syncthing:
+    image: lscr.io/linuxserver/syncthing:latest
+    container_name: syncthing
+    hostname: syncthing
+    restart: unless-stopped
+    environment:
+      PUID: "1001"
+      PGID: "{{ homelab_shared_gid }}"
+      TZ: "{{ timezone }}"
+    volumes:
+      - "{{ penzance_data_root }}/config/syncthing:/config"
+      - "{{ shared_storage_mountpoint }}/sync:/sync"
+      - "{{ shared_storage_media_root }}:/media"
+    ports:
+      - "22000:22000/tcp"
+      - "22000:22000/udp"
+      - "21027:21027/udp"
+    networks:
+      - edge
+      - media

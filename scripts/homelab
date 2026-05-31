@@ -1,19 +1,1172 @@
 #!/usr/bin/env python3
-from pathlib import Path
+from __future__ import annotations
+
 import os
 import sys
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-VENV_PYTHON = ROOT_DIR / ".venv" / "bin" / "python3"
-
-if VENV_PYTHON.exists() and os.environ.get("HOMELAB_VENV_ACTIVE") != "1":
+ROOT_DIR_FOR_BOOTSTRAP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+VENV_PYTHON = os.path.join(ROOT_DIR_FOR_BOOTSTRAP, ".venv", "bin", "python3")
+if os.path.exists(VENV_PYTHON) and os.environ.get("HOMELAB_VENV_ACTIVE") != "1":
     env = os.environ.copy()
     env["HOMELAB_VENV_ACTIVE"] = "1"
-    os.execve(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]], env)
+    os.execve(VENV_PYTHON, [VENV_PYTHON, os.path.abspath(__file__), *sys.argv[1:]], env)
 
-sys.path.insert(0, str(ROOT_DIR))
+import json
+import re
+import subprocess
+from pathlib import Path
+from shutil import which
+from typing import Any
 
-from homelab_cli import cli
+import click
+import yaml
+
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+RUNTIME_DIR = Path(os.environ.get("HOMELAB_RUNTIME_DIR", "/tmp/homelab"))
+PASS_STORE_OVERRIDE = os.environ.get("HOMELAB_PASSWORD_STORE_DIR")
+PASS_STORE_ENV = os.environ.get("PASSWORD_STORE_DIR")
+PASS_STORE_DIR = Path(PASS_STORE_OVERRIDE or PASS_STORE_ENV or (Path.home() / ".password-store"))
+PASS_PREFIX = os.environ.get("HOMELAB_PASS_PREFIX", "homelab/penzance")
+PASS_RUNTIME_PREFIX = os.environ.get("HOMELAB_PASS_RUNTIME_PREFIX", "homelab/runtime")
+LEGACY_SSH_DIR = Path(os.environ.get("HOMELAB_LEGACY_SSH_DIR", Path.home() / ".ssh" / "homelab"))
+ANSIBLE_DIR = ROOT_DIR / "ansible"
+TERRAFORM_DIR = ROOT_DIR / "terraform"
+TERRAFORM_STATE_DIR = RUNTIME_DIR / "terraform-state"
+TERRAFORM_STATE_PATH = TERRAFORM_STATE_DIR / "terraform.tfstate"
+TERRAFORM_STATE_BACKUP_PATH = TERRAFORM_STATE_DIR / "terraform.tfstate.backup"
+INVENTORY_PATH = ANSIBLE_DIR / "inventories" / "lab" / "hosts.yml"
+GROUP_VARS_PATH = ANSIBLE_DIR / "inventories" / "lab" / "group_vars" / "all.yml"
+TFVARS_PATH = TERRAFORM_DIR / "terraform.tfvars"
+CONFIG_PATH = ROOT_DIR / "homelab.yml"
+SECRETS_RENDER_SCRIPT = ROOT_DIR / "scripts" / "render-secrets.sh"
+SSH_KEYS_DIR = RUNTIME_DIR / "ssh"
+
+
+def env_with_pass() -> dict[str, str]:
+    env = os.environ.copy()
+    if PASS_STORE_OVERRIDE:
+        env["PASSWORD_STORE_DIR"] = str(PASS_STORE_DIR)
+    return env
+
+
+def ansible_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["ANSIBLE_LOCAL_TEMP"] = str(RUNTIME_DIR / "ansible-local")
+    env["ANSIBLE_REMOTE_TMP"] = f"/tmp/.ansible-{os.environ.get('USER', 'ryan')}/tmp"
+    return env
+
+
+def run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+    check: bool = True,
+    capture_output: bool = False,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            env=env,
+            check=check,
+            text=True,
+            input=input_text,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.PIPE if capture_output else None,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = ""
+        if isinstance(exc.stderr, str) and exc.stderr.strip():
+            detail = exc.stderr.strip()
+        elif isinstance(exc.stdout, str) and exc.stdout.strip():
+            detail = exc.stdout.strip()
+        message = f"command failed ({exc.returncode}): {' '.join(cmd)}"
+        if detail:
+            message = f"{message}\n{detail}"
+        raise click.ClickException(message) from exc
+
+
+def require_tool(name: str) -> None:
+    if which(name) is None:
+        raise click.ClickException(f"missing required command: {name}")
+
+
+def load_yaml(path: Path) -> dict[str, Any]:
+    with path.open() as fh:
+        data = yaml.safe_load(fh)
+    return data or {}
+
+
+def load_config() -> dict[str, Any]:
+    return load_yaml(CONFIG_PATH)
+
+
+def tf_value(value: Any, indent: int = 0) -> str:
+    pad = " " * indent
+    child_pad = " " * (indent + 2)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "null"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, list):
+        if not value:
+            return "[]"
+        if all(not isinstance(item, (dict, list)) for item in value):
+            return "[" + ", ".join(tf_value(item, indent) for item in value) + "]"
+        items = [f"{child_pad}{tf_value(item, indent + 2)}" for item in value]
+        return "[\n" + ",\n".join(items) + f"\n{pad}]"
+    if isinstance(value, dict):
+        if not value:
+            return "{}"
+        rows = [f"{child_pad}{key} = {tf_value(item, indent + 2)}" for key, item in value.items()]
+        return "{\n" + "\n".join(rows) + f"\n{pad}}}"
+    raise TypeError(f"unsupported Terraform value: {type(value)!r}")
+
+
+def write_yaml(path: Path, data: dict[str, Any]) -> None:
+    path.write_text(yaml.safe_dump(data, sort_keys=False, width=4096))
+
+
+def ssh_key_dir(config: dict[str, Any]) -> Path:
+    runtime_dir = Path(config["homelab"].get("runtime_dir", RUNTIME_DIR)).expanduser()
+    return Path(config["homelab"].get("ssh_key_dir", runtime_dir / "ssh")).expanduser()
+
+
+def ssh_private_key_path(config: dict[str, Any], host_name: str, user_name: str) -> str:
+    if user_name == "root":
+        key_name = f"{host_name}_root_ed25519"
+    else:
+        key_name = f"{host_name}_{user_name}_ed25519"
+    return str(ssh_key_dir(config) / key_name)
+
+
+def ssh_automation_key_path(config: dict[str, Any], host_name: str) -> str:
+    return str(ssh_key_dir(config) / f"{host_name}_automation_ed25519")
+
+
+def expected_ssh_key_paths(config: dict[str, Any]) -> list[Path]:
+    paths = [Path(ssh_private_key_path(config, config["proxmox"]["host"], "root"))]
+    for name, vm in config["vms"].items():
+        ssh = vm.get("ssh", {})
+        ssh_user = ssh.get("user", "ryan")
+        paths.append(Path(ssh.get("private_key", ssh_private_key_path(config, name, ssh_user))))
+        paths.append(Path(ssh.get("automation_key", ssh_automation_key_path(config, name))))
+
+    with_public_keys: list[Path] = []
+    for path in paths:
+        if path not in with_public_keys:
+            with_public_keys.append(path)
+        public_path = Path(f"{path}.pub")
+        if public_path not in with_public_keys:
+            with_public_keys.append(public_path)
+    return with_public_keys
+
+
+def ssh_public_key(private_key_path: str) -> str:
+    public_key_path = Path(f"{private_key_path}.pub")
+    if not public_key_path.exists():
+        raise click.ClickException(f"missing SSH public key: {public_key_path}")
+    return public_key_path.read_text().strip()
+
+
+def pass_runtime_entry(*parts: str) -> str:
+    return "/".join([PASS_RUNTIME_PREFIX.strip("/"), *[part.strip("/") for part in parts]])
+
+
+def pass_show(entry: str, *, required: bool = False) -> str | None:
+    require_tool("pass")
+    result = run(["pass", "show", entry], env=env_with_pass(), check=False, capture_output=True)
+    if result.returncode == 0:
+        return result.stdout
+    if required:
+        detail = (result.stderr or "").strip()
+        suffix = f": {detail}" if detail else ""
+        raise click.ClickException(f"missing pass entry {entry}{suffix}")
+    return None
+
+
+def pass_insert(entry: str, text: str) -> None:
+    require_tool("pass")
+    run(["pass", "insert", "-m", "-f", entry], env=env_with_pass(), input_text=text)
+
+
+def legacy_ssh_source(path: Path) -> Path:
+    return LEGACY_SSH_DIR / path.name
+
+
+def restore_runtime_from_pass(
+    *,
+    require_ssh: bool = True,
+    require_terraform_state: bool = False,
+    restore_terraform_state: bool = False,
+) -> None:
+    config = load_config()
+    ssh_dir = ssh_key_dir(config)
+    ssh_dir.mkdir(parents=True, exist_ok=True)
+    ssh_dir.chmod(0o700)
+
+    for path in expected_ssh_key_paths(config):
+        if path.exists():
+            continue
+        entry = pass_runtime_entry("ssh", path.name)
+        text = pass_show(entry, required=False)
+        if text is None:
+            legacy_path = legacy_ssh_source(path)
+            if legacy_path.exists():
+                text = legacy_path.read_text()
+            elif require_ssh:
+                raise click.ClickException(f"missing pass entry {entry}: no runtime cache or legacy SSH source found")
+            else:
+                continue
+        path.write_text(text)
+        path.chmod(0o644 if path.name.endswith(".pub") else 0o600)
+
+    if not (require_terraform_state or restore_terraform_state):
+        return
+
+    TERRAFORM_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    if not TERRAFORM_STATE_PATH.exists():
+        text = pass_show(pass_runtime_entry("terraform", TERRAFORM_STATE_PATH.name), required=False)
+        if text is not None:
+            TERRAFORM_STATE_PATH.write_text(text)
+            TERRAFORM_STATE_PATH.chmod(0o600)
+    if not TERRAFORM_STATE_BACKUP_PATH.exists():
+        text = pass_show(pass_runtime_entry("terraform", TERRAFORM_STATE_BACKUP_PATH.name), required=False)
+        if text is not None:
+            TERRAFORM_STATE_BACKUP_PATH.write_text(text)
+            TERRAFORM_STATE_BACKUP_PATH.chmod(0o600)
+
+
+def import_runtime_to_pass() -> list[str]:
+    config = load_config()
+    imported: list[str] = []
+    for path in expected_ssh_key_paths(config):
+        source = path if path.exists() else legacy_ssh_source(path)
+        if not source.exists():
+            raise click.ClickException(f"missing runtime SSH file: {path}")
+        entry = pass_runtime_entry("ssh", path.name)
+        pass_insert(entry, source.read_text())
+        imported.append(entry)
+
+    for path in [TERRAFORM_STATE_PATH, TERRAFORM_STATE_BACKUP_PATH]:
+        if not path.exists():
+            continue
+        entry = pass_runtime_entry("terraform", path.name)
+        pass_insert(entry, path.read_text())
+        imported.append(entry)
+
+    return imported
+
+
+def save_terraform_state_to_pass() -> list[str]:
+    saved: list[str] = []
+    for path in [TERRAFORM_STATE_PATH, TERRAFORM_STATE_BACKUP_PATH]:
+        if not path.exists():
+            continue
+        entry = pass_runtime_entry("terraform", path.name)
+        pass_insert(entry, path.read_text())
+        saved.append(entry)
+    return saved
+
+
+def service_domain(service_name: str, service: dict[str, Any], default_domain: str) -> str:
+    if "domain" in service:
+        return service["domain"]
+    return f"{service_name.replace('_', '-')}.{default_domain}"
+
+
+def render_config_files() -> None:
+    config = load_config()
+    domain = config["homelab"]["domain"]
+    proxmox = config["proxmox"]
+    network = config["network"]
+    cloudflare = config.get("cloudflare", {})
+    vms = config["vms"]
+    penzance = vms["penzance"]
+    penzance_docker = penzance.get("docker", {})
+    services = config.get("services", {})
+    users = config.get("users", {})
+    ryan = users.get("ryan", {})
+    packages = config.get("packages", {})
+    user_packages = [
+        package
+        for user in users.values()
+        for package in user.get("packages", [])
+    ]
+    homelab_packages = sorted(set(packages.get("base", []) + user_packages))
+    shared_group = config["homelab"].get("shared_group", "homelab")
+    shared_gid = config["homelab"].get("shared_gid", 2100)
+    proxmox_key = ssh_private_key_path(config, proxmox["host"], "root")
+
+    inventory = {
+        "all": {
+            "children": {
+                "proxmox_hosts": {
+                    "hosts": {
+                        proxmox["host"]: {
+                            "ansible_host": proxmox["address"],
+                            "ansible_user": "root",
+                            "ansible_ssh_private_key_file": proxmox_key,
+                            "ssh_user": "root",
+                            "ssh_private_key_file": proxmox_key,
+                        }
+                    }
+                },
+                "penzance": {"hosts": {}},
+            }
+        }
+    }
+
+    for name, vm in vms.items():
+        ssh = vm.get("ssh", {})
+        ssh_user = ssh.get("user", "ryan")
+        private_key = ssh.get("private_key", ssh_private_key_path(config, name, ssh_user))
+        automation_key = ssh.get("automation_key", ssh_automation_key_path(config, name))
+        public_keys = ssh.get(
+            "public_keys",
+            [ssh_public_key(private_key), ssh_public_key(automation_key)],
+        )
+        inventory["all"]["children"]["penzance"]["hosts"][name] = {
+            "ansible_host": vm["address"],
+            "ansible_ssh_private_key_file": automation_key,
+            "ssh_user": ssh_user,
+            "ssh_private_key_file": private_key,
+            "terraform_ssh_public_keys": public_keys,
+        }
+
+    service_records = []
+    service_routes = {}
+    resolved_services = {}
+    compose_templates = []
+    for name, service in services.items():
+        resolved_domain = service_domain(name, service, domain)
+        resolved_services[name] = {**service, "domain": resolved_domain}
+        service_routes[name] = {
+            "domain": resolved_domain,
+            "host": service.get("host", "penzance"),
+            "local": service.get("local", True),
+            "cloudflare_public": service.get("cloudflare_public", False),
+            "gluetun": service.get("gluetun", True),
+            "compose_template": service.get("compose_template"),
+            "compose": service.get("compose", {}),
+        }
+        if service.get("compose_template"):
+            compose_templates.append(service["compose_template"])
+        if service.get("local", True):
+            host_name = service.get("host", "penzance")
+            service_records.append({"domain": resolved_domain, "ip": vms[host_name]["address"]})
+
+    gluetun_enabled = any(route["gluetun"] for route in service_routes.values())
+    if gluetun_enabled:
+        compose_templates.insert(0, "gluetun.yml.j2")
+
+    group_vars = {
+        "ansible_user": "ansible",
+        "homelab_packages": homelab_packages,
+        "homelab_user_packages": {
+            name: user.get("packages", [])
+            for name, user in users.items()
+        },
+        "homelab_service_routes": service_routes,
+        "homelab_docker_service_templates": compose_templates,
+        "homelab_gluetun_enabled": gluetun_enabled,
+        "timezone": config["homelab"].get("timezone", "Europe/London"),
+        "bootstrap_user": "ansible",
+        "homelab_shared_group": shared_group,
+        "homelab_shared_gid": shared_gid,
+        "ryan_user": "ryan",
+        "ryan_groups": ryan.get("groups", ["sudo"]),
+        "ryan_shell": ryan.get("shell", "/usr/bin/zsh"),
+        "shared_storage_mountpoint": "/srv/shared",
+        "shared_storage_nfs_export": proxmox["nfs_export"],
+        "shared_storage_mount_opts": "rw,nfsvers=4.2,hard,timeo=600,retrans=2,noatime",
+        "shared_storage_vm_root": "{{ shared_storage_mountpoint }}/vm",
+        "shared_storage_penzance_root": "{{ shared_storage_mountpoint }}/vm/penzance",
+        "shared_storage_media_root": "{{ shared_storage_mountpoint }}/media",
+        "proxmox_storage_disks": [
+            {"uuid": uuid, "mountpoint": f"/srv/disks/disk{idx}"}
+            for idx, uuid in enumerate(proxmox.get("storage_disk_uuids", []), start=1)
+        ],
+        "proxmox_storage_pool_path": "/srv/storage/pool",
+        "proxmox_storage_pool_name": "pool",
+        "proxmox_nfs_export_cidr": network["cidr"],
+        "proxmox_storage_vm_root": "/srv/storage/pool/vm",
+        "proxmox_storage_penzance_root": "/srv/storage/pool/vm/penzance",
+        "proxmox_storage_media_root": "/srv/storage/pool/media",
+        "docker_stack_root": penzance_docker.get("stack_root", "/opt/penzance"),
+        "penzance_compose_file": "{{ docker_stack_root }}/docker-compose.yml",
+        "penzance_data_root": penzance_docker.get("data_root", "/var/lib/penzance"),
+        "jellyfin_config_root": penzance_docker.get("jellyfin_config_root", "/var/lib/penzance/config/jellyfin"),
+        "pihole_host_ip": penzance["address"],
+        "pihole_dns_records": [
+            {"domain": f"{proxmox['host']}.proxmox.{domain}", "ip": proxmox["address"]},
+            {"domain": f"{proxmox['host']}.{domain}", "ip": proxmox["address"]},
+            {"domain": "penzance.vm." + domain, "ip": penzance["address"]},
+            {"domain": "penzance." + domain, "ip": penzance["address"]},
+            *service_records,
+        ],
+        "pihole_local_domain": resolved_services["pihole"]["domain"],
+        "proxmox_local_domain": resolved_services["proxmox"]["domain"],
+        "jellyfin_local_domain": resolved_services["jellyfin"]["domain"],
+        "navidrome_local_domain": resolved_services["navidrome"]["domain"],
+        "syncthing_local_domain": resolved_services["syncthing"]["domain"],
+        "filebrowser_local_domain": resolved_services["filebrowser"]["domain"],
+        "jellyfin_firetv_local_domain": resolved_services["jellyfin_firetv"]["domain"],
+        "isambard_local_domain": resolved_services["isambard"]["domain"],
+        "portainer_local_domain": resolved_services["portainer"]["domain"],
+    }
+
+    public_hostnames = [
+        service["domain"]
+        for service in resolved_services.values()
+        if service.get("cloudflare_public", False)
+    ]
+    vm_definitions = {
+        name: {
+            "vm_id": vm["vm_id"],
+            "role": vm["role"],
+            "ip_address": vm["address"],
+            "cidr": int(network["cidr"].split("/", 1)[1]),
+            "cpu_cores": vm["cores"],
+            "memory_mb": vm["memory_mb"],
+            "disk_gb": vm["disk_gb"],
+            "started": vm.get("started", True),
+            "on_boot": vm.get("on_boot", True),
+            "tags": vm.get("tags", []),
+            "ssh_public_keys": inventory["all"]["children"]["penzance"]["hosts"][name]["terraform_ssh_public_keys"],
+        }
+        for name, vm in vms.items()
+    }
+    terraform_vars = {
+        "proxmox_endpoint": proxmox["endpoint"],
+        "proxmox_username": proxmox["username"],
+        "proxmox_insecure": True,
+        "cloudflare_enabled": cloudflare.get("enabled", False),
+        "cloudflare_manage_zone_rules": cloudflare.get("manage_zone_rules", False),
+        "cloudflare_manage_geo_restriction": cloudflare.get("manage_geo_restriction", False),
+        "cloudflare_manage_cache_rule": cloudflare.get("manage_cache_rule", False),
+        "cloudflare_manage_rate_limit": cloudflare.get("manage_rate_limit", False),
+        "cloudflare_manage_warp_profile": cloudflare.get("manage_warp_profile", False),
+        "cloudflare_tunnel_manage_config": cloudflare.get("manage_tunnel_config", False),
+        "cloudflare_public_hostnames": public_hostnames,
+        "cloudflare_private_network_cidrs": cloudflare.get("private_network_cidrs", [network["cidr"]]),
+        "cloudflare_private_dns_suffixes": cloudflare.get("private_dns_suffixes", [domain]),
+        "cloudflare_private_dns_servers": cloudflare.get("private_dns_servers", [penzance["address"]]),
+        "cloudflare_zero_trust_email_allowlist": cloudflare.get("zero_trust_email_allowlist", []),
+        "proxmox_node_name": proxmox["node_name"],
+        "vm_template_id": proxmox["template_id"],
+        "vm_storage": proxmox["storage"],
+        "cloud_init_storage": proxmox["cloud_init_storage"],
+        "default_gateway": network["gateway"],
+        "dns_servers": network["dns_servers"],
+        "ci_user": "ansible",
+        "ci_password": None,
+        "vm_definitions": vm_definitions,
+    }
+
+    write_yaml(INVENTORY_PATH, inventory)
+    write_yaml(GROUP_VARS_PATH, group_vars)
+    tfvars_text = "# Generated from ../homelab.yml by ./scripts/homelab config render.\n"
+    tfvars_text += "# Edit homelab.yml, not this file.\n\n"
+    for key, value in terraform_vars.items():
+        tfvars_text += f"{key} = {tf_value(value)}\n"
+    TFVARS_PATH.write_text(tfvars_text)
+    if which("terraform"):
+        run(["terraform", "fmt", str(TFVARS_PATH)], cwd=ROOT_DIR, capture_output=True)
+
+
+def inventory_data() -> tuple[dict[str, Any], dict[str, Any]]:
+    return load_yaml(INVENTORY_PATH), load_yaml(GROUP_VARS_PATH)
+
+
+def flatten_hosts() -> dict[str, dict[str, Any]]:
+    inventory, _ = inventory_data()
+    hosts: dict[str, dict[str, Any]] = {}
+
+    def walk(node: dict[str, Any]) -> None:
+        for name, data in (node.get("hosts") or {}).items():
+            hosts[name] = data or {}
+        for child in (node.get("children") or {}).values():
+            walk(child or {})
+
+    walk(inventory.get("all", {}))
+    return hosts
+
+
+def host_group_map() -> dict[str, str]:
+    inventory, _ = inventory_data()
+    mapping: dict[str, str] = {}
+
+    def walk(node_name: str, node: dict[str, Any]) -> None:
+        for name in (node.get("hosts") or {}).keys():
+            mapping[name] = node_name
+        for child_name, child in (node.get("children") or {}).items():
+            walk(child_name, child or {})
+
+    for child_name, child in (inventory.get("all", {}).get("children") or {}).items():
+        walk(child_name, child or {})
+    return mapping
+
+
+def parse_vm_definitions() -> dict[str, dict[str, Any]]:
+    text = TFVARS_PATH.read_text()
+    match = re.search(r"vm_definitions\s*=\s*\{(?P<body>.*)\n\}", text, re.S)
+    if not match:
+        return {}
+
+    body = match.group("body")
+    blocks = re.finditer(r"(?m)^\s*([A-Za-z0-9_-]+)\s*=\s*\{(.*?)^\s*\}", body, re.S | re.M)
+    parsed: dict[str, dict[str, Any]] = {}
+
+    for block in blocks:
+        name = block.group(1)
+        raw = block.group(2)
+        data: dict[str, Any] = {}
+
+        for key in ["vm_id", "role", "ip_address", "cidr", "cpu_cores", "memory_mb", "disk_gb"]:
+            item = re.search(rf"(?m)^\s*{re.escape(key)}\s*=\s*(.+?)\s*$", raw)
+            if not item:
+                continue
+            value = item.group(1).rstrip(",").strip()
+            if value.isdigit():
+                data[key] = int(value)
+            else:
+                data[key] = value.strip('"')
+
+        tags = re.search(r"tags\s*=\s*\[(.*?)\]", raw, re.S)
+        if tags:
+            data["tags"] = re.findall(r'"([^"]+)"', tags.group(1))
+
+        parsed[name] = data
+
+    return parsed
+
+
+def resolve_host(name: str) -> tuple[str, dict[str, Any]]:
+    hosts = flatten_hosts()
+    aliases = {"proxmox": "cornwall"}
+    resolved = aliases.get(name, name)
+    if resolved not in hosts:
+        raise click.ClickException(f"unknown host: {name}")
+    return resolved, hosts[resolved]
+
+
+def host_connection(name: str) -> tuple[str, dict[str, Any], dict[str, Any], str]:
+    resolved, host = resolve_host(name)
+    _, group_vars = inventory_data()
+    user = host.get("ansible_user") or group_vars["ansible_user"]
+    return resolved, host, group_vars, user
+
+
+def ssh_identity_config(host_name: str, identity: str) -> tuple[dict[str, Any], str, str]:
+    resolved, host, _, automation_user = host_connection(host_name)
+
+    if identity == "automation":
+        key_file = host.get("ansible_ssh_private_key_file")
+        user = automation_user
+    elif identity == "ryan":
+        key_file = host.get("ssh_private_key_file") or host.get("ansible_ssh_private_key_file")
+        user = host.get("ssh_user") or ("root" if resolved == "cornwall" else "ryan")
+    else:
+        raise click.ClickException(f"unsupported ssh identity: {identity}")
+
+    if not key_file:
+        raise click.ClickException(f"host {host_name} has no SSH key configured for identity {identity}")
+
+    return host, user, key_file
+
+
+def ssh_command(
+    host_name: str,
+    remote_args: list[str] | None = None,
+    *,
+    identity: str = "automation",
+    allocate_tty: bool = False,
+    disable_host_key_checking: bool = True,
+) -> list[str]:
+    host, user, key_file = ssh_identity_config(host_name, identity)
+
+    cmd = ["ssh"]
+    if disable_host_key_checking:
+        cmd.extend(["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null"])
+    cmd.extend(["-i", key_file])
+    if allocate_tty:
+        cmd.append("-t")
+    cmd.append(f"{user}@{host['ansible_host']}")
+    if remote_args:
+        cmd.extend(remote_args)
+    return cmd
+
+
+def ssh_exec(host_name: str, remote_args: list[str], *, identity: str = "automation", allocate_tty: bool = False) -> None:
+    cmd = ssh_command(host_name, remote_args, identity=identity, allocate_tty=allocate_tty)
+    os.execvp(cmd[0], cmd)
+
+
+def ssh_run(
+    host_name: str,
+    remote_args: list[str],
+    *,
+    identity: str = "automation",
+    check: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    return run(
+        ssh_command(host_name, remote_args, identity=identity),
+        check=check,
+        capture_output=True,
+    )
+
+
+def render_status_table(rows: list[tuple[str, str, str, str]]) -> None:
+    if not rows:
+        return
+    widths = [
+        max(len(row[0]) for row in rows + [("Section", "", "", "")]),
+        max(len(row[1]) for row in rows + [("", "Check", "", "")]),
+        max(len(row[2]) for row in rows + [("", "", "Status", "")]),
+    ]
+    click.echo(f"{'Section':<{widths[0]}}  {'Check':<{widths[1]}}  {'Status':<{widths[2]}}  Details")
+    for section, check, status, detail in rows:
+        click.echo(f"{section:<{widths[0]}}  {check:<{widths[1]}}  {status:<{widths[2]}}  {detail}")
+
+
+def render_secrets() -> None:
+    if os.environ.get("HOMELAB_SKIP_RENDER_SECRETS") == "1":
+        return
+    generated_files = [
+        ROOT_DIR / "terraform" / "terraform.auto.tfvars.json",
+        ROOT_DIR / "ansible" / "inventories" / "lab" / "group_vars" / "all.secrets.yml",
+        ROOT_DIR / ".env.homelab",
+    ]
+    if os.environ.get("HOMELAB_FORCE_RENDER_SECRETS") != "1" and all(path.exists() for path in generated_files):
+        return
+    run([str(SECRETS_RENDER_SCRIPT)], cwd=ROOT_DIR, env=env_with_pass())
+
+
+def terraform_init() -> None:
+    run(["terraform", "init", "-reconfigure", "-plugin-dir=.terraform/providers"], cwd=TERRAFORM_DIR)
+
+
+def terraform_plan() -> None:
+    run(["terraform", "plan"], cwd=TERRAFORM_DIR)
+
+
+def terraform_apply(*, auto_approve: bool) -> None:
+    cmd = ["terraform", "apply"]
+    if auto_approve:
+        cmd.append("-auto-approve")
+    run(cmd, cwd=TERRAFORM_DIR)
+
+
+def install_ansible_collections() -> None:
+    run(["ansible-galaxy", "collection", "install", "-r", "requirements.yml"], cwd=ANSIBLE_DIR, env=ansible_env())
+
+
+def run_ansible_playbook(playbook: str, extra_args: tuple[str, ...] = ()) -> None:
+    run(["ansible-playbook", f"playbooks/{playbook}.yml", *extra_args], cwd=ANSIBLE_DIR, env=ansible_env())
+
+
+def ansible_check(playbook: str, *, diff: bool = False) -> None:
+    extra_args = ["--check"]
+    if diff:
+        extra_args.append("--diff")
+    run_ansible_playbook(playbook, tuple(extra_args))
+
+
+def docker_stack_refresh(host_name: str = "penzance") -> None:
+    group_vars = inventory_data()[1]
+    compose_file = f"{group_vars.get('docker_stack_root', '/opt/penzance')}/docker-compose.yml"
+    run(
+        ssh_command(host_name, ["sudo", "docker", "compose", "-f", compose_file, "pull"], identity="automation"),
+        check=True,
+    )
+    run(
+        ssh_command(
+            host_name,
+            [
+                "sudo",
+                "docker",
+                "compose",
+                "-f",
+                compose_file,
+                "up",
+                "-d",
+                "--remove-orphans",
+                "--force-recreate",
+            ],
+            identity="automation",
+        ),
+        check=True,
+    )
+
+
+@click.group()
+def cli() -> None:
+    """Homelab automation CLI."""
+
+
+@cli.command("check-tools")
+def check_tools() -> None:
+    for tool in ["pass", "gpg", "terraform", "ansible-playbook", "ansible-galaxy", "ssh", "git"]:
+        click.echo(f"{tool}: {'ok' if which(tool) else 'missing'}")
+
+
+@cli.group("config")
+def config_group() -> None:
+    """Render Terraform and Ansible config from homelab.yml."""
+
+
+@config_group.command("render")
+def config_render() -> None:
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    click.echo("rendered:")
+    click.echo(f"  {TFVARS_PATH.relative_to(ROOT_DIR)}")
+    click.echo(f"  {INVENTORY_PATH.relative_to(ROOT_DIR)}")
+    click.echo(f"  {GROUP_VARS_PATH.relative_to(ROOT_DIR)}")
+
+
+@config_group.command("check")
+def config_check() -> None:
+    restore_runtime_from_pass(require_ssh=True)
+    before = {
+        path: path.read_text() if path.exists() else ""
+        for path in [TFVARS_PATH, INVENTORY_PATH, GROUP_VARS_PATH]
+    }
+    render_config_files()
+    changed = [path for path, text in before.items() if path.read_text() != text]
+    if changed:
+        for path in changed:
+            click.echo(f"out of date: {path.relative_to(ROOT_DIR)}")
+        raise click.ClickException("run ./scripts/homelab config render")
+    click.echo("homelab.yml outputs are current")
+
+
+@cli.command("ssh", context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False})
+@click.argument("name")
+@click.argument("remote_args", nargs=-1, type=click.UNPROCESSED)
+@click.option("--identity", type=click.Choice(["ryan", "automation"]), default="ryan", show_default=True)
+def ssh_host(name: str, remote_args: tuple[str, ...], identity: str) -> None:
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    if remote_args[:1] == ("--",):
+        remote_args = remote_args[1:]
+    ssh_exec(name, list(remote_args), identity=identity, allocate_tty=not remote_args)
+
+
+@cli.command("ssh-config")
+def ssh_config() -> None:
+    """Print SSH config entries for the homelab hosts."""
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    hosts = flatten_hosts()
+    for name in sorted(hosts):
+        host = hosts[name]
+        if "ansible_host" not in host:
+            continue
+        identity = host.get("ssh_private_key_file") or host.get("ansible_ssh_private_key_file")
+        user = host.get("ssh_user") or ("root" if name == "cornwall" else "ryan")
+        click.echo(f"Host {name}")
+        click.echo(f"  HostName {host['ansible_host']}")
+        click.echo(f"  User {user}")
+        if identity:
+            click.echo(f"  IdentityFile {identity}")
+            click.echo("  IdentitiesOnly yes")
+        click.echo("")
+
+
+@cli.command("status")
+@click.option("--strict", is_flag=True, help="Exit non-zero when a health check fails.")
+def status(strict: bool) -> None:
+    """Show runtime, config, and live health for the homelab."""
+    restore_runtime_from_pass(require_ssh=True)
+    before = {
+        path: path.read_text() if path.exists() else ""
+        for path in [TFVARS_PATH, INVENTORY_PATH, GROUP_VARS_PATH]
+    }
+    render_config_files()
+    changed = [path for path, text in before.items() if path.read_text() != text]
+    inventory, group_vars = inventory_data()
+
+    rows: list[tuple[str, str, str, str]] = []
+    pending_actions: list[str] = []
+    failed = False
+
+    def add_row(section: str, check: str, ok: bool, detail: str = "", warning: bool = False) -> None:
+        nonlocal failed
+        failed = failed or not ok
+        status = "warn" if warning and ok else ("ok" if ok else "fail")
+        rows.append((section, check, status, detail))
+
+    runtime_ssh = expected_ssh_key_paths(load_config())
+    runtime_ok = all(path.exists() for path in runtime_ssh)
+    add_row(
+        "Runtime",
+        "SSH cache",
+        runtime_ok,
+        f"{sum(1 for path in runtime_ssh if path.exists())}/{len(runtime_ssh)} files present",
+        warning=not runtime_ok,
+    )
+
+    state_ok = TERRAFORM_STATE_PATH.exists()
+    add_row(
+        "Runtime",
+        "Terraform state",
+        state_ok,
+        "seeded" if state_ok else "not seeded",
+        warning=not state_ok,
+    )
+
+    config_ok = not changed
+    config_detail = "current" if config_ok else f"{len(changed)} generated file(s) need config render"
+    add_row("Config", "Rendered outputs", config_ok, config_detail, warning=not config_ok)
+    if not config_ok:
+        pending_actions.append("./scripts/homelab config render")
+    if not state_ok:
+        pending_actions.append("./scripts/homelab runtime save-state")
+
+    ssh_check = ssh_run("penzance", ["true"])
+    ssh_detail = ""
+    if ssh_check.returncode != 0:
+        ssh_detail = (ssh_check.stderr or "").strip().splitlines()[-1:] and (ssh_check.stderr or "").strip().splitlines()[-1] or ""
+    add_row("Live", "SSH penzance", ssh_check.returncode == 0, ssh_detail)
+    if ssh_check.returncode != 0:
+        render_status_table(rows)
+        if pending_actions:
+            click.echo("")
+            click.echo("Queued actions:")
+            for action in pending_actions:
+                click.echo(f"- {action}")
+        if strict:
+            raise click.ClickException("status checks failed")
+        return
+
+    docker = ssh_run("penzance", ["sudo", "docker", "ps", "--format", "{{.Names}},{{.Image}},{{.Status}}"])
+    if docker.returncode == 0:
+        container_rows = []
+        for line in (docker.stdout or "").splitlines():
+            parts = line.split(",", 2)
+            if len(parts) == 3:
+                name, image, state = parts
+                ok = "Up " in state and "unhealthy" not in state.lower()
+                container_rows.append((name, ok, f"{image} | {state}"))
+        unhealthy = [name for name, ok, _ in container_rows if not ok]
+        add_row("Live", "Docker stack", not unhealthy, f"{len(container_rows)} containers; unhealthy: {', '.join(unhealthy) if unhealthy else 'none'}", warning=bool(unhealthy))
+    else:
+        add_row("Live", "Docker stack", False, (docker.stderr or "").strip().splitlines()[-1:] and (docker.stderr or "").strip().splitlines()[-1] or "")
+
+    cornwall = ssh_run("penzance", ["ping", "-c", "1", "-W", "2", "192.168.1.100"])
+    add_row("Live", "Penzance -> Cornwall", cornwall.returncode == 0, "")
+
+    dns_total = 0
+    dns_failed = 0
+    for record in group_vars.get("pihole_dns_records", []):
+        dns_total += 1
+        domain = record["domain"]
+        expected = record["ip"]
+        dns = ssh_run("penzance", ["dig", "+short", "@127.0.0.1", domain])
+        answers = [line.strip() for line in (dns.stdout or "").splitlines() if line.strip()]
+        ok = dns.returncode == 0 and expected in answers
+        dns_failed += 0 if ok else 1
+    add_row("Live", "Pi-hole DNS", dns_failed == 0, f"{dns_total - dns_failed}/{dns_total} records resolved")
+
+    http_total = 0
+    http_failed = 0
+    for url in [
+        f"https://{group_vars['pihole_local_domain']}",
+        f"https://{group_vars['jellyfin_local_domain']}",
+        f"https://{group_vars['navidrome_local_domain']}",
+        f"https://{group_vars['syncthing_local_domain']}",
+        f"https://{group_vars['filebrowser_local_domain']}",
+        f"https://{group_vars['isambard_local_domain']}",
+        f"https://{group_vars['portainer_local_domain']}",
+    ]:
+        http_total += 1
+        http = ssh_run("penzance", ["curl", "-k", "-sS", "-o", "/dev/null", "-w", "%{http_code}", url])
+        code = (http.stdout or "").strip()
+        ok = http.returncode == 0 and code not in {"000", ""}
+        http_failed += 0 if ok else 1
+    add_row("Live", "HTTPS endpoints", http_failed == 0, f"{http_total - http_failed}/{http_total} responding")
+
+    render_status_table(rows)
+    if pending_actions:
+        click.echo("")
+        click.echo("Queued actions:")
+        for action in pending_actions:
+            click.echo(f"- {action}")
+
+    if strict and failed:
+        raise click.ClickException("status checks failed")
+
+
+@cli.command("docker-update")
+@click.option("--host", default="penzance", show_default=True, help="Docker host to refresh.")
+def docker_update(host: str) -> None:
+    """Pull and recreate the Docker stack on the homelab host."""
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    docker_stack_refresh(host)
+
+
+@cli.command("plan")
+@click.option("--ansible/--no-ansible", default=True, show_default=True, help="Include Ansible check mode for penzance.")
+@click.option("--diff", "ansible_diff", is_flag=True, help="Include Ansible diffs. This can print rendered secrets.")
+def plan(ansible: bool, ansible_diff: bool) -> None:
+    """Show pending Terraform and Ansible changes."""
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    terraform_plan()
+    if ansible:
+        install_ansible_collections()
+        ansible_check("penzance", diff=ansible_diff)
+
+
+@cli.command("apply")
+@click.option("--auto-approve", is_flag=True, help="Pass -auto-approve to terraform apply.")
+@click.option("--skip-terraform", is_flag=True, help="Only run Ansible and refresh Docker.")
+@click.option("--skip-docker-refresh", is_flag=True, help="Do not force a Docker Compose pull/recreate after Ansible.")
+def apply(auto_approve: bool, skip_terraform: bool, skip_docker_refresh: bool) -> None:
+    """Apply Terraform, run Ansible, then refresh the Docker stack."""
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=not skip_terraform)
+    render_config_files()
+    render_secrets()
+    if not skip_terraform:
+        terraform_init()
+        terraform_apply(auto_approve=auto_approve)
+        save_terraform_state_to_pass()
+    install_ansible_collections()
+    run_ansible_playbook("penzance")
+    if not skip_docker_refresh:
+        docker_stack_refresh("penzance")
+
+
+@cli.group(name="vms")
+def vms() -> None:
+    """Inspect and access VMs."""
+
+
+@vms.command("list")
+@click.option("--json-output", is_flag=True, help="Print JSON instead of a table.")
+def vms_list(json_output: bool) -> None:
+    hosts = flatten_hosts()
+    groups = host_group_map()
+    defs = parse_vm_definitions()
+    rows = []
+    for name in sorted(hosts):
+        if groups.get(name) == "proxmox_hosts":
+            continue
+        terraform_data = defs.get(name, {})
+        rows.append(
+            {
+                "name": name,
+                "group": groups.get(name),
+                "ip": hosts[name].get("ansible_host") or terraform_data.get("ip_address"),
+                "role": terraform_data.get("role"),
+                "vm_id": terraform_data.get("vm_id"),
+            }
+        )
+
+    if json_output:
+        click.echo(json.dumps(rows, indent=2))
+        return
+
+    for row in rows:
+        click.echo(
+            "{name}\t{ip}\t{group}\t{role}\tvmid={vm_id}".format(
+                name=row["name"],
+                ip=row["ip"] or "?",
+                group=row["group"] or "?",
+                role=row["role"] or "?",
+                vm_id=row["vm_id"] or "?",
+            )
+        )
+
+
+@vms.command("get")
+@click.argument("name")
+def vms_get(name: str) -> None:
+    hosts = flatten_hosts()
+    groups = host_group_map()
+    defs = parse_vm_definitions()
+    if name not in hosts and name not in defs:
+        raise click.ClickException(f"unknown VM: {name}")
+    click.echo(
+        json.dumps(
+            {
+                "name": name,
+                "group": groups.get(name),
+                "inventory": hosts.get(name, {}),
+                "terraform": defs.get(name, {}),
+            },
+            indent=2,
+        )
+    )
+
+
+@vms.command("ssh", context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False})
+@click.argument("name")
+@click.argument("remote_args", nargs=-1, type=click.UNPROCESSED)
+def vms_ssh(name: str, remote_args: tuple[str, ...]) -> None:
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    if remote_args[:1] == ("--",):
+        remote_args = remote_args[1:]
+    ssh_exec(name, list(remote_args), allocate_tty=not remote_args)
+
+
+@cli.group()
+def deploy() -> None:
+    """Run Terraform and Ansible workflows."""
+
+
+@deploy.command("init")
+def deploy_init() -> None:
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    install_ansible_collections()
+
+
+@deploy.command("terraform-plan")
+def deploy_terraform_plan() -> None:
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    terraform_plan()
+
+
+@deploy.command("terraform-apply")
+@click.option("--auto-approve", is_flag=True, help="Pass -auto-approve to terraform apply.")
+def deploy_terraform_apply(auto_approve: bool) -> None:
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    terraform_apply(auto_approve=auto_approve)
+    save_terraform_state_to_pass()
+
+
+@deploy.command("ansible")
+@click.argument("playbook", type=click.Choice(["proxmox", "penzance", "site"]))
+@click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
+def deploy_ansible(playbook: str, extra_args: tuple[str, ...]) -> None:
+    restore_runtime_from_pass(require_ssh=True)
+    render_config_files()
+    render_secrets()
+    run_ansible_playbook(playbook, extra_args)
+
+
+@deploy.command("all")
+@click.option("--auto-approve", is_flag=True, help="Pass -auto-approve to terraform apply.")
+@click.option("--playbook", type=click.Choice(["proxmox", "penzance", "site"]), default="site")
+def deploy_all(auto_approve: bool, playbook: str) -> None:
+    click.echo("Running config render, runtime secret render, terraform init/plan/apply, ansible collection install, and ansible playbook")
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    install_ansible_collections()
+    terraform_plan()
+    terraform_apply(auto_approve=auto_approve)
+    save_terraform_state_to_pass()
+    run_ansible_playbook(playbook)
+
+
+@deploy.command("bootstrap")
+def deploy_bootstrap() -> None:
+    click.echo("Running config render, runtime secret render, terraform init, ansible collection install, and site playbook")
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=True)
+    render_config_files()
+    render_secrets()
+    terraform_init()
+    install_ansible_collections()
+    run_ansible_playbook("site")
+
+
+@cli.group("runtime")
+def runtime_group() -> None:
+    """Manage pass-backed runtime SSH keys and Terraform state."""
+
+
+@runtime_group.command("import")
+def runtime_import() -> None:
+    """Store current runtime SSH keys and Terraform state in pass."""
+    imported = import_runtime_to_pass()
+    for entry in imported:
+        click.echo(f"stored: {entry}")
+    if not imported:
+        click.echo("nothing to store")
+
+
+@runtime_group.command("restore")
+@click.option("--require-state", is_flag=True, help="Fail if Terraform state is not present in pass.")
+def runtime_restore(require_state: bool) -> None:
+    """Hydrate /tmp/homelab from pass."""
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=require_state, restore_terraform_state=True)
+    click.echo(f"restored runtime cache: {RUNTIME_DIR}")
+
+
+@runtime_group.command("save-state")
+def runtime_save_state() -> None:
+    """Store the current Terraform state cache in pass."""
+    saved = save_terraform_state_to_pass()
+    for entry in saved:
+        click.echo(f"stored: {entry}")
+    if not saved:
+        raise click.ClickException(f"no Terraform state found at {TERRAFORM_STATE_PATH}")
+
+
+@runtime_group.command("status")
+def runtime_status() -> None:
+    """Show whether runtime cache files are present without printing secrets."""
+    config = load_config()
+    restore_candidates = expected_ssh_key_paths(config)
+    click.echo(f"pass runtime prefix: {PASS_RUNTIME_PREFIX}")
+    click.echo(f"runtime cache: {RUNTIME_DIR}")
+    for path in restore_candidates:
+        marker = "ok" if path.exists() else "missing"
+        click.echo(f"{marker:7} {path}")
+    for path in [TERRAFORM_STATE_PATH, TERRAFORM_STATE_BACKUP_PATH]:
+        marker = "ok" if path.exists() else "missing"
+        click.echo(f"{marker:7} {path}")
+
+
+@cli.command("paths")
+def paths() -> None:
+    data = {
+        "root_dir": str(ROOT_DIR),
+        "runtime_dir": str(RUNTIME_DIR),
+        "pass_store_dir": str(PASS_STORE_DIR),
+        "pass_runtime_prefix": PASS_RUNTIME_PREFIX,
+        "inventory_path": str(INVENTORY_PATH),
+        "group_vars_path": str(GROUP_VARS_PATH),
+        "terraform_vars_path": str(TFVARS_PATH),
+        "terraform_state_path": str(TERRAFORM_STATE_PATH),
+        "config_path": str(CONFIG_PATH),
+        "ssh_keys_dir": str(SSH_KEYS_DIR),
+    }
+    click.echo(json.dumps(data, indent=2))
+
+
+@cli.command("debug-cloudflare-ids")
+def debug_cloudflare_ids() -> None:
+    """Print live Cloudflare IDs needed for state import."""
+    restore_runtime_from_pass(require_ssh=True, require_terraform_state=not TERRAFORM_STATE_PATH.exists())
+    render_config_files()
+    run(["terraform", "apply", "-refresh-only", "-auto-approve", "-lock=false"], cwd=TERRAFORM_DIR)
+    outputs = run(["terraform", "output", "-json"], cwd=TERRAFORM_DIR, capture_output=True)
+    click.echo(outputs.stdout.strip())
 
 
 if __name__ == "__main__":

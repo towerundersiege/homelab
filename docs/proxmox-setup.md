@@ -1,6 +1,7 @@
 # Proxmox Setup
 
 This document records the one-time Proxmox setup commands for this repository.
+Terraform is rendered from `homelab.yml`; the generated output lands in `terraform/terraform.tfvars`.
 
 ## Terraform Service Account
 
@@ -45,13 +46,13 @@ That grants more access than Terraform strictly needs, but it is simpler for ini
 From your local machine, upload the dedicated Cornwall root key with:
 
 ```sh
-ssh-copy-id -i ./keys/ssh/cornwall_root_ed25519.pub root@192.168.1.100
+ssh-copy-id -i ~/.ssh/homelab/cornwall_root_ed25519.pub root@192.168.1.100
 ```
 
 If `ssh-copy-id` is not available, use:
 
 ```sh
-cat ./keys/ssh/cornwall_root_ed25519.pub | ssh root@192.168.1.100 "umask 077; mkdir -p /root/.ssh && cat >> /root/.ssh/authorized_keys"
+cat ~/.ssh/homelab/cornwall_root_ed25519.pub | ssh root@192.168.1.100 "umask 077; mkdir -p /root/.ssh && cat >> /root/.ssh/authorized_keys"
 ```
 
 ## Find the Debian Cloud-Init Template ID
@@ -59,7 +60,7 @@ cat ./keys/ssh/cornwall_root_ed25519.pub | ssh root@192.168.1.100 "umask 077; mk
 SSH to the Proxmox host:
 
 ```sh
-ssh -i ./keys/ssh/cornwall_root_ed25519 root@192.168.1.100
+ssh -i ~/.ssh/homelab/cornwall_root_ed25519 root@192.168.1.100
 ```
 
 List all QEMU VMs and templates:
@@ -154,7 +155,7 @@ qm set 9001 --serial0 socket --vga serial0
 qm template 9001
 ```
 
-Then update `vm_template_id` in `terraform/terraform.tfvars`.
+Then update `vm_template_id` in `homelab.yml` and rerun `./scripts/homelab config render`.
 
 ## Reference
 

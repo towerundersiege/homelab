@@ -6,7 +6,8 @@ resource "proxmox_virtual_environment_vm" "vms" {
   name            = each.key
   description     = local.default_description
   tags            = each.value.tags
-  on_boot         = true
+  started         = each.value.started
+  on_boot         = each.value.on_boot
   stop_on_destroy = true
 
   cpu {
