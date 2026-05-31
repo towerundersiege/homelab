@@ -12,12 +12,12 @@ services:
       - --port
       - "8080"
       - --root
-      - /srv/shared
+      - /srv
       - --database
       - /database/filebrowser.db
     volumes:
-      - "${SHARED_ROOT:-/srv/shared}:/srv/shared"
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/filebrowser:/database"
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/filebrowser:/config"
+      - "${FILES_ROOT:-/srv}:/srv"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/filebrowser:/database"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/filebrowser:/config"
     networks:
       - edge

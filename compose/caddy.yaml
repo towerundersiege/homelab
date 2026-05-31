@@ -17,9 +17,9 @@ services:
       - "${TAILSCALE_IP:-127.0.0.1}:443:443/tcp"
       - "${TAILSCALE_IP:-127.0.0.1}:443:443/udp"
     volumes:
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/caddy/data:/data"
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/caddy/config:/config"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/caddy/data:/data"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/caddy/config:/config"
     networks:
       - edge
       - media

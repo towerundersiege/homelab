@@ -18,15 +18,15 @@ set -a
 source .env
 set +a
 
-: "${CONFIG_ROOT:=/var/lib/penzance/config}"
-: "${SHARED_ROOT:=/srv/shared}"
-: "${MEDIA_ROOT:=/srv/shared/media}"
-: "${SYNC_ROOT:=/srv/shared/sync}"
+: "${CONFIG_ROOT:=/var/lib/homelab/config}"
+: "${FILES_ROOT:=/srv}"
+: "${MEDIA_ROOT:=/srv/media}"
+: "${SYNC_ROOT:=/srv/sync}"
 : "${PUID:=1000}"
 : "${PGID:=1000}"
-: "${HOMELAB_USER:=${SUDO_USER:-$(id -un)}}"
-: "${HOMELAB_GROUP:=homelab}"
-: "${HOMELAB_GROUP_GID:=$PGID}"
+: "${SERVICE_USER:=${SUDO_USER:-$(id -un)}}"
+: "${SERVICE_GROUP:=homelab}"
+: "${SERVICE_GROUP_GID:=$PGID}"
 
 sudo -v
 
@@ -77,23 +77,23 @@ ensure_tailscale() {
 }
 
 configure_users() {
-  if ! getent group "$HOMELAB_GROUP" >/dev/null; then
-    if getent group "$HOMELAB_GROUP_GID" >/dev/null; then
-      echo "Group id $HOMELAB_GROUP_GID already exists but is not $HOMELAB_GROUP. Update .env before deploying." >&2
+  if ! getent group "$SERVICE_GROUP" >/dev/null; then
+    if getent group "$SERVICE_GROUP_GID" >/dev/null; then
+      echo "Group id $SERVICE_GROUP_GID already exists but is not $SERVICE_GROUP. Update .env before deploying." >&2
       exit 1
     fi
-    sudo groupadd --gid "$HOMELAB_GROUP_GID" "$HOMELAB_GROUP"
+    sudo groupadd --gid "$SERVICE_GROUP_GID" "$SERVICE_GROUP"
   fi
 
   local current_gid
-  current_gid="$(getent group "$HOMELAB_GROUP" | cut -d: -f3)"
+  current_gid="$(getent group "$SERVICE_GROUP" | cut -d: -f3)"
   if [[ "$current_gid" != "$PGID" ]]; then
-    echo "HOMELAB_GROUP $HOMELAB_GROUP has gid $current_gid but PGID is $PGID. Make them match in .env." >&2
+    echo "SERVICE_GROUP $SERVICE_GROUP has gid $current_gid but PGID is $PGID. Make them match in .env." >&2
     exit 1
   fi
 
-  sudo usermod -aG docker "$HOMELAB_USER"
-  sudo usermod -aG "$HOMELAB_GROUP" "$HOMELAB_USER"
+  sudo usermod -aG docker "$SERVICE_USER"
+  sudo usermod -aG "$SERVICE_GROUP" "$SERVICE_USER"
 }
 
 create_directories() {
@@ -106,7 +106,7 @@ create_directories() {
     "$CONFIG_ROOT/jellyfin" \
     "$CONFIG_ROOT/navidrome" \
     "$CONFIG_ROOT/syncthing" \
-    "$SHARED_ROOT" \
+    "$FILES_ROOT" \
     "$MEDIA_ROOT" \
     "$MEDIA_ROOT/music" \
     "$MEDIA_ROOT/movies" \
@@ -115,7 +115,7 @@ create_directories() {
 
   sudo install -m 0644 Caddyfile "$CONFIG_ROOT/caddy/Caddyfile"
   sudo chown -R "$PUID:$PGID" "$CONFIG_ROOT/filebrowser" "$CONFIG_ROOT/navidrome" "$CONFIG_ROOT/syncthing" "$SYNC_ROOT"
-  sudo chgrp -R "$HOMELAB_GROUP" "$MEDIA_ROOT" "$SYNC_ROOT"
+  sudo chgrp -R "$SERVICE_GROUP" "$MEDIA_ROOT" "$SYNC_ROOT"
   sudo chmod -R g+rwX "$MEDIA_ROOT" "$SYNC_ROOT"
   sudo find "$MEDIA_ROOT" "$SYNC_ROOT" -type d -exec chmod g+s {} +
 }
@@ -187,7 +187,7 @@ configure_compose_timer
 cat <<EOF
 Deployment complete.
 
-The user $HOMELAB_USER is a member of docker and $HOMELAB_GROUP. New login
+The user $SERVICE_USER is a member of docker and $SERVICE_GROUP. New login
 sessions can use docker without sudo.
 
 One-time Tailscale setup, if not already done:

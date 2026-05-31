@@ -9,7 +9,7 @@ services:
       TZ: "${TZ:-Europe/London}"
       JELLYFIN_PublishedServerUrl: "https://jellyfin.${DOMAIN:-towerundersiege.com}"
     volumes:
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/jellyfin:/config"
-      - "${MEDIA_ROOT:-/srv/shared/media}:/data:ro"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/jellyfin:/config"
+      - "${MEDIA_ROOT:-/srv/media}:/data:ro"
     networks:
       - media

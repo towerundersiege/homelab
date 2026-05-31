@@ -10,7 +10,7 @@ services:
       ND_LOGLEVEL: "info"
       ND_SESSIONTIMEOUT: "24h"
     volumes:
-      - "${CONFIG_ROOT:-/var/lib/penzance/config}/navidrome:/data"
-      - "${MEDIA_ROOT:-/srv/shared/media}/music:/music:ro"
+      - "${CONFIG_ROOT:-/var/lib/homelab/config}/navidrome:/data"
+      - "${MEDIA_ROOT:-/srv/media}/music:/music:ro"
     networks:
       - media

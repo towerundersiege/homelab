@@ -48,12 +48,12 @@ Required values:
 - `CLOUDFLARED_TUNNEL_TOKEN`: Cloudflare Tunnel token.
 - `TAILSCALE_IP`: the host's Tailscale IPv4 address, filled in after `tailscale up`.
 
-Storage defaults preserve the current `penzance` layout:
+Storage defaults use generic local paths:
 
-- app config/state: `/var/lib/penzance/config`
-- shared files: `/srv/shared`
-- media: `/srv/shared/media`
-- sync: `/srv/shared/sync`
+- app config/state: `/var/lib/homelab/config`
+- files root: `/srv`
+- media: `/srv/media`
+- sync: `/srv/sync`
 
 Override those paths in `.env` if the bare-metal host uses different mounts.
 
@@ -63,7 +63,7 @@ Override those paths in `.env` if the bare-metal host uses different mounts.
 2. Write it to a USB stick.
 3. Boot the machine from USB.
 4. Install Debian using the normal guided installer.
-5. Use the hostname you want for the box, for example `penzance`.
+5. Use the hostname you want for the box, for example `homelab`.
 6. Create the normal operator user, for example `ryan`.
 7. Select only the base system and SSH server. A desktop environment is not needed.
 8. Install the bootloader to the main OS disk.
@@ -86,15 +86,17 @@ Mount or attach the storage that should hold media and sync data before deployin
 The default layout is:
 
 ```text
-/srv/shared
-/srv/shared/media
-/srv/shared/media/music
-/srv/shared/media/movies
-/srv/shared/media/tv
-/srv/shared/sync
+/srv
+/srv/media
+/srv/media/music
+/srv/media/movies
+/srv/media/tv
+/srv/sync
 ```
 
 If this is a fresh disk, create a persistent mount in `/etc/fstab` first. The deploy script creates directories and permissions, but it does not partition, format, or mount disks.
+
+If you are migrating from the older `penzance` layout, move or copy `/var/lib/penzance/config` to `/var/lib/homelab/config`, `/srv/shared/media` to `/srv/media`, and `/srv/shared/sync` to `/srv/sync` before cutting over.
 
 ## Fetch The Repo
 
@@ -282,9 +284,9 @@ Back up at least:
 
 ```text
 .env
-/var/lib/penzance/config
-/srv/shared/media
-/srv/shared/sync
+/var/lib/homelab/config
+/srv/media
+/srv/sync
 ```
 
 The `.env` file contains live credentials. Keep backups encrypted.
