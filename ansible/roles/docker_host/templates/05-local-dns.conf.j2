@@ -1,4 +1,0 @@
-{% for record in pihole_dns_records %}
-local=/{{ record.domain }}/
-address=/{{ record.domain }}/{{ record.ip }}
-{% endfor %}

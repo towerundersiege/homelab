@@ -1,16 +1,17 @@
+services:
   syncthing:
     image: lscr.io/linuxserver/syncthing:latest
     container_name: syncthing
     hostname: syncthing
     restart: unless-stopped
     environment:
-      PUID: "1001"
-      PGID: "{{ homelab_shared_gid }}"
-      TZ: "{{ timezone }}"
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: "${TZ:-Europe/London}"
     volumes:
-      - "{{ penzance_data_root }}/config/syncthing:/config"
-      - "{{ shared_storage_mountpoint }}/sync:/sync"
-      - "{{ shared_storage_media_root }}:/media"
+      - "${CONFIG_ROOT:-/var/lib/penzance/config}/syncthing:/config"
+      - "${SYNC_ROOT:-/srv/shared/sync}:/sync"
+      - "${MEDIA_ROOT:-/srv/shared/media}:/media"
     ports:
       - "22000:22000/tcp"
       - "22000:22000/udp"

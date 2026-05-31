@@ -1,3 +1,0 @@
----
-- import_playbook: proxmox.yml
-- import_playbook: penzance.yml

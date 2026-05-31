@@ -1,15 +1,16 @@
+services:
   navidrome:
     image: deluan/navidrome:latest
     container_name: navidrome
     restart: unless-stopped
-    user: "1001:1001"
+    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
-      TZ: "{{ timezone }}"
+      TZ: "${TZ:-Europe/London}"
       ND_SCANSCHEDULE: "1h"
       ND_LOGLEVEL: "info"
       ND_SESSIONTIMEOUT: "24h"
     volumes:
-      - "{{ penzance_data_root }}/config/navidrome:/data"
-      - "{{ shared_storage_media_root }}/music:/music:ro"
+      - "${CONFIG_ROOT:-/var/lib/penzance/config}/navidrome:/data"
+      - "${MEDIA_ROOT:-/srv/shared/media}/music:/music:ro"
     networks:
       - media

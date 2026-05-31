@@ -1,0 +1,15 @@
+name: homelab
+
+include:
+  - compose/caddy.yaml
+  - compose/cloudflared.yaml
+  - compose/filebrowser.yaml
+  - compose/jellyfin.yaml
+  - compose/navidrome.yaml
+  - compose/syncthing.yaml
+
+networks:
+  edge:
+    driver: bridge
+  media:
+    driver: bridge
