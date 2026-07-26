@@ -137,6 +137,8 @@ They must be able to recover independently after a failed cluster startup.
 - **2026-07-26:** K3s `v1.36.1+k3s1` installed with bundled networking,
   kube-proxy, ServiceLB, and Traefik disabled. Cilium `1.19.6` is healthy with
   kube-proxy replacement, Hubble, Gateway API, and L2 announcements enabled.
+  Enable Cilium's legacy host-routing path for reliable transparent-proxy
+  handling of LAN Gateway traffic on this host.
 - **2026-07-26:** Flux bootstrapped from `towerundersiege/homelab` using a
   read-only GitHub SSH deploy key; Flux controllers and initial sync are
   healthy. The GitHub token used to create the deploy key is not stored in the

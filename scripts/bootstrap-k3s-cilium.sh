@@ -70,6 +70,7 @@ if ! kubectl -n kube-system get daemonset cilium >/dev/null 2>&1; then
     --set k8sServicePort=6443 \
     --set ipam.operator.clusterPoolIPv4PodCIDRList=10.42.0.0/16 \
     --set operator.replicas=1 \
+    --set bpf.hostLegacyRouting=true \
     --set hubble.relay.enabled=true \
     --set hubble.ui.enabled=true \
     --set gatewayAPI.enabled=true \
