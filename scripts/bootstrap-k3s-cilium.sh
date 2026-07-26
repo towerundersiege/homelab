@@ -74,7 +74,7 @@ if ! kubectl -n kube-system get daemonset cilium >/dev/null 2>&1; then
     --set hubble.relay.enabled=true \
     --set hubble.ui.enabled=true \
     --set gatewayAPI.enabled=true \
-    --set gatewayAPI.gatewayClass.create=false \
+    --set-string gatewayAPI.gatewayClass.create=false \
     --set l2announcements.enabled=true
 else
   echo 'Cilium is already installed; not changing its Helm values.'
