@@ -19,9 +19,7 @@ source .env
 set +a
 
 : "${CONFIG_ROOT:=/var/lib/homelab/config}"
-: "${FILES_ROOT:=/srv}"
 : "${MEDIA_ROOT:=/srv/media}"
-: "${SYNC_ROOT:=/srv/sync}"
 : "${PUID:=1000}"
 : "${PGID:=1000}"
 : "${SERVICE_USER:=${SUDO_USER:-$(id -un)}}"
@@ -102,22 +100,18 @@ create_directories() {
     "$CONFIG_ROOT/caddy" \
     "$CONFIG_ROOT/caddy/config" \
     "$CONFIG_ROOT/caddy/data" \
-    "$CONFIG_ROOT/filebrowser" \
     "$CONFIG_ROOT/jellyfin" \
     "$CONFIG_ROOT/navidrome" \
-    "$CONFIG_ROOT/syncthing" \
-    "$FILES_ROOT" \
     "$MEDIA_ROOT" \
     "$MEDIA_ROOT/music" \
     "$MEDIA_ROOT/movies" \
-    "$MEDIA_ROOT/tv" \
-    "$SYNC_ROOT"
+    "$MEDIA_ROOT/tv"
 
   sudo install -m 0644 Caddyfile "$CONFIG_ROOT/caddy/Caddyfile"
-  sudo chown -R "$PUID:$PGID" "$CONFIG_ROOT/filebrowser" "$CONFIG_ROOT/navidrome" "$CONFIG_ROOT/syncthing" "$SYNC_ROOT"
-  sudo chgrp -R "$SERVICE_GROUP" "$MEDIA_ROOT" "$SYNC_ROOT"
-  sudo chmod -R g+rwX "$MEDIA_ROOT" "$SYNC_ROOT"
-  sudo find "$MEDIA_ROOT" "$SYNC_ROOT" -type d -exec chmod g+s {} +
+  sudo chown -R "$PUID:$PGID" "$CONFIG_ROOT/navidrome"
+  sudo chgrp -R "$SERVICE_GROUP" "$MEDIA_ROOT"
+  sudo chmod -R g+rwX "$MEDIA_ROOT"
+  sudo find "$MEDIA_ROOT" -type d -exec chmod g+s {} +
 }
 
 configure_compose_timer() {

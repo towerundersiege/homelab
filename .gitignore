@@ -2,4 +2,6 @@
 !.env.example
 .venv/
 keys/ssh/
+.sops.agekey
+*.agekey
 .DS_Store

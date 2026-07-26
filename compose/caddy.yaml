@@ -3,11 +3,6 @@ services:
     image: ghcr.io/caddybuilds/caddy-cloudflare:latest
     container_name: caddy
     restart: unless-stopped
-    depends_on:
-      - filebrowser
-      - jellyfin
-      - navidrome
-      - syncthing
     environment:
       ACME_EMAIL: "${ACME_EMAIL:-info@towerundersiege.com}"
       CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN in .env}"

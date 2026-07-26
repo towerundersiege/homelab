@@ -7,23 +7,3 @@
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 }
-
-jellyfin.{$DOMAIN} {
-	import cloudflare_tls
-	reverse_proxy jellyfin:8096
-}
-
-navidrome.{$DOMAIN} {
-	import cloudflare_tls
-	reverse_proxy navidrome:4533
-}
-
-syncthing.{$DOMAIN} {
-	import cloudflare_tls
-	reverse_proxy syncthing:8384
-}
-
-filebrowser.{$DOMAIN} {
-	import cloudflare_tls
-	reverse_proxy filebrowser:8080
-}
