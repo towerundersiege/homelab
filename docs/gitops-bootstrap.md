@@ -86,6 +86,9 @@ stored in the cluster; Flux receives the read-only SSH deploy key instead.
 2. Gateway API v1.4.1 CRDs and Cilium Gateway/L2/LB IPAM configuration. The
    shared HTTP Gateway uses the reserved LAN address `192.168.1.102` on
    `enp3s0f0`; HTTPS is added after cert-manager is available.
+   Flux owns the `GatewayClass`; the imperative Cilium bootstrap is configured
+   with `gatewayAPI.gatewayClass.create=false` so Helm never attempts to adopt
+   it.
 3. cert-manager with a narrowly scoped Cloudflare DNS token encrypted by SOPS.
 4. Local-path storage policy and `/mnt/crimson` PersistentVolume definitions.
 5. Cloudflare Tunnel credentials and routes, encrypted by SOPS.
