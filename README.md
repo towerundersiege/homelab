@@ -15,7 +15,9 @@ access, DNS recovery, and data mounts do not depend on the cluster.
   `/mnt/disks/stardust`, and exposed by MergerFS at `/mnt/crimson`.
 - K3s `v1.36.1+k3s1`, Cilium `1.19.6`, Gateway API, and Flux are healthy.
   The Cilium LAN gateway owns the reserved `192.168.1.102` address.
-- Pi-hole and applications are not installed yet.
+- Pi-hole runs natively on the host and serves the private DNS boundary:
+  `pihole.home.rpca.uk` resolves to `.101`; `*.home.rpca.uk` resolves to
+  `.102`. It has not yet been advertised through router DHCP.
 
 The verified pre-reinstall archive remains on the media disk at
 `/mnt/crimson/media/homelab-migration/pre-debian-20260726-verified`.
