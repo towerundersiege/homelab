@@ -19,9 +19,11 @@ fi
 # for MagicDNS. The public resolvers keep Pi-hole independent of that detail.
 pihole-FTL --config dns.upstreams '["1.1.1.1","1.0.0.1"]'
 
-# Accept only requests from directly connected networks, including the LAN and
-# the Tailscale interface. This avoids becoming an open resolver.
-pihole-FTL --config dns.listeningMode "LOCAL"
+# Tailscale nodes use a /32 address, so Pi-hole's LOCAL mode rejects remote
+# tailnet queries even though tailscale0 exists. ALL is required for this
+# LAN-plus-tailnet resolver. It is safe only because this host has no WAN DNS
+# port-forward: the router/LAN and authenticated tailnet remain the boundary.
+pihole-FTL --config dns.listeningMode "ALL"
 
 # Pi-hole itself stays outside Kubernetes on the host IP. The wildcard mapping
 # is deliberately limited to the private homelab DNS suffix; Cilium receives

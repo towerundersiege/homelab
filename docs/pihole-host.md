@@ -45,9 +45,13 @@ sudo bash scripts/configure-pihole.sh
 ```
 
 The script uses Pi-hole v6's supported `pihole-FTL --config` interface to set
-the upstream resolvers, safe local-only listener, direct Pi-hole host record,
-and the `home.rpca.uk` wildcard. Do not add a competing `dnsmasq` daemon or
-legacy files under `/etc/dnsmasq.d`.
+the upstream resolvers, listener, direct Pi-hole host record, and the
+`home.rpca.uk` wildcard. It uses Pi-hole's `ALL` listener mode because
+Tailscale nodes have /32 addresses and Pi-hole's safer `LOCAL` mode rejects
+remote tailnet queries. This is safe only while the host has **no WAN DNS
+port-forward**: the home router/LAN and authenticated tailnet are the DNS
+access boundary. Do not add a competing `dnsmasq` daemon or legacy files under
+`/etc/dnsmasq.d`.
 
 ## Verify before changing clients
 

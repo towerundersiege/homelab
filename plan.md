@@ -149,9 +149,10 @@ They must be able to recover independently after a failed cluster startup.
   the next bootstrap step; its configuration and recovery instructions are in
   [`docs/pihole-host.md`](docs/pihole-host.md).
 - **2026-07-26:** native host Pi-hole installed and verified. It safely accepts
-  local-network DNS queries, serves `pihole.home.rpca.uk` at `.101`, and sends
-  the `home.rpca.uk` wildcard to the Cilium Gateway at `.102`. Configure router
-  DHCP DNS only after this verification (the next action).
+  LAN and authenticated-Tailscale DNS queries, serves `pihole.home.rpca.uk` at
+  `.101`, and sends the `home.rpca.uk` wildcard to the Cilium Gateway at
+  `.102`. Its all-interface listener requires that no WAN DNS port-forward is
+  ever configured. Configure router DHCP DNS only after this verification.
 
 ## Current migration source
 
