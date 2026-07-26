@@ -128,6 +128,20 @@ They must be able to recover independently after a failed cluster startup.
    Tailscale SSH/split DNS, public media routes, Flux reconciliation, registry
    pulls, and one backup restore.
 
+## Completed rebuild milestones
+
+- **2026-07-26:** Debian 13 installed bare metal as `homelab` with Tailscale
+  and Tailscale SSH working.
+- **2026-07-26:** retained DAS disk mounted as `stardust`; one-disk MergerFS
+  pool `crimson` verified after reboot.
+- **2026-07-26:** K3s `v1.36.1+k3s1` installed with bundled networking,
+  kube-proxy, ServiceLB, and Traefik disabled. Cilium `1.19.6` is healthy with
+  kube-proxy replacement, Hubble, Gateway API, and L2 announcements enabled.
+- **2026-07-26:** Flux bootstrapped from `towerundersiege/homelab` using a
+  read-only GitHub SSH deploy key; Flux controllers and initial sync are
+  healthy. The GitHub token used to create the deploy key is not stored in the
+  cluster.
+
 ## Current migration source
 
 - Penzance is a KVM VM with 4 vCPU, 15 GiB RAM, a full 48 GB root disk, and an

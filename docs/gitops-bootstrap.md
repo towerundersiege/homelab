@@ -49,8 +49,9 @@ files are allowed once the age recovery process is documented.
    reconcile files which exist only on the Mac.
 
 5. Create a fine-grained GitHub token for the existing `towerundersiege/homelab`
-   repository with Administration read-only, Contents read/write, and Metadata
-   read-only access. In the same Mac terminal, use it only in memory and let
+   repository with Administration read/write, Contents read/write, and Metadata
+   read-only access. Deploy keys are a repository-administration setting. In
+   the same Mac terminal, use it only in memory and let
    Flux create a read-only SSH deploy key:
 
    ```sh
