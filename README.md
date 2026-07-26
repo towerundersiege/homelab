@@ -13,7 +13,9 @@ access, DNS recovery, and data mounts do not depend on the cluster.
 - Passwordless SSH and Tailscale SSH are working.
 - The retained 8 TB ext4 DAS disk is labelled `stardust`, mounted at
   `/mnt/disks/stardust`, and exposed by MergerFS at `/mnt/crimson`.
-- K3s, Cilium, Flux, Pi-hole, and applications are not installed yet.
+- K3s `v1.36.1+k3s1`, Cilium `1.19.6`, Gateway API, and Flux are healthy.
+  The Cilium LAN gateway owns the reserved `192.168.1.102` address.
+- Pi-hole and applications are not installed yet.
 
 The verified pre-reinstall archive remains on the media disk at
 `/mnt/crimson/media/homelab-migration/pre-debian-20260726-verified`.
@@ -51,6 +53,9 @@ the local age recovery key must remain outside Git.
 
 4. Follow [the GitOps bootstrap runbook](docs/gitops-bootstrap.md) from the
    Mac to install Flux from this existing GitHub repository.
+
+5. Follow [the host Pi-hole runbook](docs/pihole-host.md) to establish private
+   DNS before deploying applications.
 
 After Flux is managing the cluster, add infrastructure and applications through
 Git commits. Do not deploy long-lived applications directly with `kubectl`.

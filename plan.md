@@ -143,6 +143,11 @@ They must be able to recover independently after a failed cluster startup.
   read-only GitHub SSH deploy key; Flux controllers and initial sync are
   healthy. The GitHub token used to create the deploy key is not stored in the
   cluster.
+- **2026-07-26:** Cilium L2 announced the dedicated LAN Gateway IP
+  `192.168.1.102`; it is reachable from the LAN and returns Envoy's expected
+  `404` until application `HTTPRoute` objects are deployed. Host Pi-hole is
+  the next bootstrap step; its configuration and recovery instructions are in
+  [`docs/pihole-host.md`](docs/pihole-host.md).
 
 ## Current migration source
 
