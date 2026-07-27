@@ -158,6 +158,10 @@ They must be able to recover independently after a failed cluster startup.
   application PVCs use the retained `homelab-local` StorageClass under
   `/srv/operational/k3s/local-path` on the NVMe. Run the tracked host tmpfiles
   bootstrap before creating the first PVC.
+- **2026-07-27:** Forgejo bootstrap begins with an encrypted SOPS administrator
+  Secret. Deploy Forgejo as a single retained-volume instance using the pinned
+  official Helm chart; keep its registry private and GitHub as Flux's recovery
+  source.
 
 ## Current migration source
 

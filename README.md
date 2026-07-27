@@ -84,3 +84,7 @@ archive storage.
 Application state is separate from media: Flux configures the retained
 `homelab-local` StorageClass under `/srv/operational` on the NVMe. See
 [the Kubernetes storage runbook](docs/kubernetes-storage.md).
+
+The first persistent application is Forgejo. Its administrator Secret is
+created locally and encrypted with SOPS; see [the Forgejo bootstrap
+runbook](docs/forgejo-bootstrap.md).
