@@ -52,6 +52,37 @@ they do not expose new LAN ports. Cloudflare provides public HTTPS at the edge.
 The host network blocks outbound QUIC, so the connector is intentionally pinned
 to Cloudflare Tunnel's supported HTTP/2 transport over TCP instead.
 
+## Required edge policy
+
+Keep these rules scoped exactly to the two public hostnames. Do not apply them
+to `*.rpca.uk`: the private `*.home.rpca.uk` names are resolved by Pi-hole and
+never pass through Cloudflare Tunnel.
+
+### Bypass Cloudflare's cache
+
+In **Rules > Cache Rules**, create a rule named `Bypass cache for public media`:
+
+```text
+http.host in {"media.rpca.uk" "music.rpca.uk"}
+```
+
+Set its action to **Bypass cache**. This prevents Cloudflare from retaining
+Jellyfin or Navidrome responses and media chunks at the edge.
+
+### Restrict public access to the UK
+
+In **Security > WAF > Custom rules**, create a rule named
+`Public media: UK only`:
+
+```text
+(http.host in {"media.rpca.uk" "music.rpca.uk"}) and (ip.geoip.country ne "GB")
+```
+
+Set its action to **Block**. This reduces the public bot surface, but does not
+block UK-based clients or bots. It will also block legitimate use while outside
+the UK or when using a VPN with a non-UK exit node; use the private
+`*.home.rpca.uk` route through Tailscale in that situation.
+
 Verify from a network outside the LAN/Tailscale:
 
 ```sh

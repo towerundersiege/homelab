@@ -73,8 +73,10 @@ Git commits. Do not deploy long-lived applications directly with `kubectl`.
   private application names such as `forgejo.home.rpca.uk`.
 - Cloudflare Tunnel will expose only `media.rpca.uk` (Jellyfin) and
   `music.rpca.uk` (Navidrome). Everything else remains LAN/Tailscale-only.
-  Follow [the Cloudflare Tunnel runbook](docs/cloudflare-tunnel.md) to create
-  the encrypted connector credential and the two dashboard routes.
+  Cloudflare must bypass its cache for those two hostnames and block requests
+  outside the UK. Follow [the Cloudflare Tunnel runbook](docs/cloudflare-tunnel.md)
+  to create the encrypted connector credential, dashboard routes, and edge
+  rules.
 - VPN-required future workloads use a Gluetun sidecar with Mullvad WireGuard;
   see [the Gluetun runbook](docs/gluetun-mullvad.md). It does not alter current
   service networking.
