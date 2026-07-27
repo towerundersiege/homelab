@@ -1,7 +1,4 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespaces
-  - forgejo
-  - media
-  - vpn
+  - mullvad-wireguard.sops.yaml

@@ -24,9 +24,9 @@ or Flux behind it. They must retain normal LAN and public routing.
    git push
    ```
 
-The `vpn` namespace is already GitOps-managed. Tell Codex once the encrypted
-Secret is committed; it is enabled together with the first VPN-bound workload.
-Do not create a standalone Gluetun Deployment.
+The `vpn` namespace and its encrypted Secret are GitOps-managed as soon as the
+configuration is committed. Do not create a standalone Gluetun Deployment; the
+first VPN-bound workload will mount the already-present Secret.
 
 ## Workload pattern
 
