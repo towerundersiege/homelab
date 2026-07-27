@@ -20,14 +20,14 @@ public media services reachable.
   there is no separate home logical volume to manage.
 - **Host-level exceptions:** Tailscale with Tailscale SSH, Pi-hole, DAS mounts,
   MergerFS/SnapRAID, backup scripts, and the minimal systemd bootstrap units.
-- **Kubernetes:** K3s with Flannel, kube-proxy, ServiceLB, and Traefik disabled;
-  Cilium supplies CNI, kube-proxy replacement, Hubble, Gateway API, LB IPAM,
-  and L2 announcements.
+- **Kubernetes:** K3s with Flannel, kube-proxy, ServiceLB, and its bundled
+  Traefik disabled. Cilium supplies CNI, kube-proxy replacement, Hubble, LB
+  IPAM, and L2 announcements; Flux deploys Traefik as the application ingress.
 - **LAN addresses:** DHCP reserves `homelab` `.101` on `192.168.1.0/24`; the
   host-level Pi-hole also uses that address. Reserve `.102` exclusively for
-  Cilium's Gateway `LoadBalancer` address; NAS remains `.100`.
+  Traefik's `LoadBalancer` address, announced by Cilium; NAS remains `.100`.
 - **DNS and routes:** Host Pi-hole serves `pihole.home.rpca.uk` directly and
-  returns the Cilium Gateway IP for app names such as
+  returns the Traefik ingress IP for app names such as
   `media.home.rpca.uk`, `music.home.rpca.uk`, and `forgejo.home.rpca.uk`.
   cert-manager uses a scoped Cloudflare DNS-01 token for `*.home.rpca.uk`.
 - **Public exposure:** Cloudflare Tunnel is the only public ingress. It exposes
@@ -79,9 +79,8 @@ Tailscale devices retain those names away from home.
 3. A documented, idempotent host bootstrap installs/verifies a pinned K3s with
    bundled networking disabled, then Cilium. Flux is bootstrapped only after
    Cilium is healthy, from the external Git repository.
-4. Flux reconciles, in order: SOPS and
-   Gateway API configuration/cert-manager; storage definitions; cloudflared;
-   then applications.
+4. Flux reconciles, in order: SOPS, networking/Traefik, storage definitions,
+   cloudflared, then applications.
 5. Pi-hole is advertised by router DHCP only after DNS health checks pass.
 
 Do not make K3s depend on Pi-hole, Forgejo, cloudflared, or media availability.
@@ -89,8 +88,8 @@ They must be able to recover independently after a failed cluster startup.
 
 ## Forgejo and automation
 
-- Deploy Forgejo with persistent local storage and its registry route (`/v2`)
-  behind the private Gateway hostname. Use a current Forgejo LTS line.
+- Forgejo has persistent local storage and its registry route (`/v2`) behind
+  the private Traefik hostname. Use a current Forgejo LTS line.
 - Initially build custom images/charts on the Mac and push versioned OCI
   artifacts to Forgejo.
 - Add one Forgejo Actions runner only when local CI is useful. It is a separate,
@@ -121,7 +120,7 @@ They must be able to recover independently after a failed cluster startup.
    SMART/SnapRAID jobs when parity storage exists; do not treat current
    one-disk `crimson` as protected storage.
 4. **Foundation:** configure Tailscale, host Pi-hole, K3s, Cilium, Flux, SOPS,
-   local persistent storage, private certificates, the shared Gateway, and
+   local persistent storage, Traefik ingress, private certificates, and
    Cloudflare Tunnel.
 5. **Applications:** deploy and restore Jellyfin first, then Navidrome, Forgejo,
    Homepage, Headlamp, Uptime Kuma, ntfy, and optional Forgejo runner.
@@ -138,30 +137,26 @@ They must be able to recover independently after a failed cluster startup.
 - **2026-07-26:** K3s `v1.36.1+k3s1` installed with bundled networking,
   kube-proxy, ServiceLB, and Traefik disabled. Cilium `1.19.6` is healthy with
   kube-proxy replacement, Hubble, Gateway API, and L2 announcements enabled.
-  Enable Cilium's legacy host-routing path for reliable transparent-proxy
-  handling of LAN Gateway traffic on this host, with BPF TPROXY enabled.
 - **2026-07-26:** Flux bootstrapped from `towerundersiege/homelab` using a
   read-only GitHub SSH deploy key; Flux controllers and initial sync are
   healthy. The GitHub token used to create the deploy key is not stored in the
   cluster.
-- **2026-07-26:** Cilium L2 announced the dedicated LAN Gateway IP
-  `192.168.1.102`; it is reachable from the LAN and returns Envoy's expected
-  `404` until application `HTTPRoute` objects are deployed. Host Pi-hole is
-  the next bootstrap step; its configuration and recovery instructions are in
-  [`docs/pihole-host.md`](docs/pihole-host.md).
 - **2026-07-26:** native host Pi-hole installed and verified. It safely accepts
   LAN and authenticated-Tailscale DNS queries, serves `pihole.home.rpca.uk` at
-  `.101`, and sends the `home.rpca.uk` wildcard to the Cilium Gateway at
+  `.101`, and sends the `home.rpca.uk` wildcard to the Traefik ingress at
   `.102`. Its all-interface listener requires that no WAN DNS port-forward is
   ever configured. Configure router DHCP DNS only after this verification.
 - **2026-07-27:** Kubernetes storage foundation is defined in Git: new
   application PVCs use the retained `homelab-local` StorageClass under
   `/srv/operational/k3s/local-path` on the NVMe. Run the tracked host tmpfiles
   bootstrap before creating the first PVC.
-- **2026-07-27:** Forgejo bootstrap begins with an encrypted SOPS administrator
-  Secret. Deploy Forgejo as a single retained-volume instance using the pinned
-  official Helm chart; keep its registry private and GitHub as Flux's recovery
-  source.
+- **2026-07-27:** Forgejo is deployed as a single retained-volume instance
+  using the pinned official Helm chart, with its administrator Secret encrypted
+  by SOPS. GitHub remains Flux's recovery source.
+- **2026-07-27:** Cilium Gateway API's host-Envoy datapath was replaced after
+  it failed to complete backend TCP handshakes on this single-node host.
+  Flux-managed Traefik now owns `.102` through a normal Cilium LoadBalancer
+  Service; Forgejo is verified at `http://forgejo.home.rpca.uk`.
 
 ## Current migration source
 
