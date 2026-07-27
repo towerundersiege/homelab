@@ -47,6 +47,13 @@ spec:
     providers:
       kubernetesIngress:
         enabled: true
+    ports:
+      web:
+        redirections:
+          entryPoint:
+            to: websecure
+            scheme: https
+            permanent: true
     service:
       type: LoadBalancer
       annotations:

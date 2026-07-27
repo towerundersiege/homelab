@@ -120,10 +120,11 @@ They must be able to recover independently after a failed cluster startup.
    SMART/SnapRAID jobs when parity storage exists; do not treat current
    one-disk `crimson` as protected storage.
 4. **Foundation:** configure Tailscale, host Pi-hole, K3s, Cilium, Flux, SOPS,
-   local persistent storage, Traefik ingress, private certificates, and
-   Cloudflare Tunnel.
-5. **Applications:** deploy and restore Jellyfin first, then Navidrome, Forgejo,
-   Homepage, Headlamp, Uptime Kuma, ntfy, and optional Forgejo runner.
+   local persistent storage, Traefik ingress, and private certificates. Add
+   Cloudflare Tunnel only when public media exposure is configured.
+5. **Applications:** deploy and restore Jellyfin, Navidrome, and Forgejo;
+   subsequently add Homepage, Headlamp, Uptime Kuma, ntfy, and the optional
+   Forgejo runner.
 6. **Validation:** reboot the host; recreate application pods; validate LAN DNS,
    Tailscale SSH/split DNS, public media routes, Flux reconciliation, registry
    pulls, and one backup restore.
@@ -157,6 +158,15 @@ They must be able to recover independently after a failed cluster startup.
   it failed to complete backend TCP handshakes on this single-node host.
   Flux-managed Traefik now owns `.102` through a normal Cilium LoadBalancer
   Service; Forgejo is verified at `http://forgejo.home.rpca.uk`.
+- **2026-07-27:** cert-manager obtains publicly trusted Let's Encrypt
+  DNS-01 certificates through a scoped Cloudflare token. Traefik redirects
+  application HTTP to HTTPS; Forgejo is available at
+  `https://forgejo.home.rpca.uk`.
+- **2026-07-27:** Jellyfin and Navidrome are restored from the verified
+  Penzance archive into retained NVMe-backed PVCs. They serve the retained
+  media pool read-only at `https://jellyfin.home.rpca.uk` and
+  `https://navidrome.home.rpca.uk`; `https://navidrom.home.rpca.uk` is an
+  intentional compatibility alias.
 
 ## Current migration source
 
