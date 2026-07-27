@@ -11,7 +11,9 @@ place.
 ## Create the tunnel
 
 1. In Cloudflare, go to **Networking > Tunnels > Create tunnel**.
-2. Name it `homelab-media` and select **Docker** as the connector type.
+2. Name it `homelab` and select **Docker** as the connector type. The tunnel is
+   a shared outward connector; its routes—not its name—define which services
+   are public.
 3. Copy only the token from the generated command (the value beginning
    `eyJ...`). Do not run the command and do not paste the token into chat or a
    shell history.
