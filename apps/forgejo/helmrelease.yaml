@@ -1,0 +1,67 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: forgejo
+  namespace: forgejo
+spec:
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: forgejo
+      version: 17.1.3
+      interval: 24h
+      sourceRef:
+        kind: HelmRepository
+        name: forgejo
+        namespace: forgejo
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    strategy:
+      type: Recreate
+    test:
+      enabled: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    persistence:
+      size: 30Gi
+      storageClass: homelab-local
+    httpRoute:
+      enabled: true
+      parentRefs:
+        - name: lan
+          namespace: homelab-system
+          sectionName: http
+      hostnames:
+        - forgejo.home.rpca.uk
+      matches:
+        path:
+          type: PathPrefix
+          value: /
+      port: 3000
+      terminate: false
+    gitea:
+      admin:
+        existingSecret: forgejo-admin
+        passwordMode: initialOnlyRequireReset
+      config:
+        server:
+          DOMAIN: forgejo.home.rpca.uk
+          ROOT_URL: http://forgejo.home.rpca.uk/
+        service:
+          DISABLE_REGISTRATION: true
+          REQUIRE_SIGNIN_VIEW: true
+        packages:
+          ENABLED: true
+        actions:
+          ENABLED: true
