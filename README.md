@@ -94,3 +94,7 @@ Application state is separate from media: Flux configures the retained
 The first persistent application is Forgejo. Its administrator Secret is
 created locally and encrypted with SOPS; see [the Forgejo bootstrap
 runbook](docs/forgejo-bootstrap.md).
+
+To mirror the committed history of local projects into private Forgejo
+repositories without changing their GitHub remotes, follow [the local import
+runbook](docs/forgejo-local-import.md).
