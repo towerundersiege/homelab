@@ -38,8 +38,7 @@ http://forgejo.home.rpca.uk
 Sign in with the credentials supplied to the encrypted Secret, then change the
 password when prompted. Registration is disabled, and the instance is private.
 The initial deployment intentionally supports HTTP Git operations only; add a
-private TLS/Gateway TCP route for Git-over-SSH after the base instance is
-validated.
+private TLS route for Git-over-SSH after the base instance is validated.
 
 ## Planned access and registry
 

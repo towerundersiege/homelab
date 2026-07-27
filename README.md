@@ -13,8 +13,9 @@ access, DNS recovery, and data mounts do not depend on the cluster.
 - Passwordless SSH and Tailscale SSH are working.
 - The retained 8 TB ext4 DAS disk is labelled `stardust`, mounted at
   `/mnt/disks/stardust`, and exposed by MergerFS at `/mnt/crimson`.
-- K3s `v1.36.1+k3s1`, Cilium `1.19.6`, Gateway API, and Flux are healthy.
-  The Cilium LAN gateway owns the reserved `192.168.1.102` address.
+- K3s `v1.36.1+k3s1`, Cilium `1.19.6`, and Flux are healthy. The
+  Flux-managed Traefik ingress owns the reserved `192.168.1.102` address;
+  Cilium provides its L2 advertisement and load balancing.
 - Pi-hole runs natively on the host and serves the private DNS boundary:
   `pihole.home.rpca.uk` resolves to `.101`; `*.home.rpca.uk` resolves to
   `.102`. It has not yet been advertised through router DHCP.
@@ -68,8 +69,8 @@ Git commits. Do not deploy long-lived applications directly with `kubectl`.
 - Tailscale provides administration anywhere with outbound internet access.
 - Pi-hole will run on the host at `192.168.1.101` and answer
   `pihole.home.rpca.uk` itself.
-- Cilium Gateway will receive the reserved LAN address `192.168.1.102` and
-  serve private application names such as `forgejo.home.rpca.uk`.
+- Traefik will receive the reserved LAN address `192.168.1.102` and serve
+  private application names such as `forgejo.home.rpca.uk`.
 - Cloudflare Tunnel will expose only `media.rpca.uk` (Jellyfin) and
   `music.rpca.uk` (Navidrome). Everything else remains LAN/Tailscale-only.
 

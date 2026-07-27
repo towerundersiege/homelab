@@ -1,0 +1,53 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: traefik
+  namespace: homelab-system
+spec:
+  interval: 24h
+  url: https://traefik.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: homelab-system
+spec:
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: traefik
+      version: 40.2.0
+      interval: 24h
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: homelab-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    deployment:
+      replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    ingressClass:
+      enabled: true
+      isDefaultClass: true
+      name: traefik
+    providers:
+      kubernetesIngress:
+        enabled: true
+    service:
+      type: LoadBalancer
+      annotations:
+        io.cilium/lb-ipam-ips: 192.168.1.102

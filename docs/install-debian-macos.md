@@ -155,8 +155,8 @@ the host, Cilium, and its health checks are working.
 5. Bootstrap pinned K3s, Cilium, and Flux from the external private Git
    repository.
 6. Deploy host-level Pi-hole at `192.168.1.101`; have it serve
-   `pihole.home.rpca.uk` directly. Kubernetes applications use the Cilium
-   Gateway at `192.168.1.102`.
+   `pihole.home.rpca.uk` directly. Kubernetes applications use the
+   Flux-managed Traefik ingress at `192.168.1.102`.
 
 See Debian's [official installation guide](https://www.debian.org/releases/stable/amd64/)
 if installer screens differ after a Debian point release.

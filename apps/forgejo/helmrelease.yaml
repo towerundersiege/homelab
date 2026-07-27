@@ -36,20 +36,6 @@ spec:
     persistence:
       size: 30Gi
       storageClass: homelab-local
-    httpRoute:
-      enabled: true
-      parentRefs:
-        - name: lan
-          namespace: homelab-system
-          sectionName: http
-      hostnames:
-        - forgejo.home.rpca.uk
-      matches:
-        path:
-          type: PathPrefix
-          value: /
-      port: 3000
-      terminate: false
     gitea:
       admin:
         existingSecret: forgejo-admin

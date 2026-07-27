@@ -9,11 +9,10 @@ restarting. It starts through the `pihole-FTL.service` systemd unit.
 | Name | Address | Owner |
 | --- | --- | --- |
 | `pihole.home.rpca.uk` | `192.168.1.101` | host Pi-hole web UI |
-| `*.home.rpca.uk` | `192.168.1.102` | Cilium LAN Gateway |
+| `*.home.rpca.uk` | `192.168.1.102` | Traefik LAN ingress |
 
-The wildcard is a DNS routing rule only. An application needs its own Flux
-managed `HTTPRoute` before its hostname produces anything other than Envoy's
-expected `404` response.
+The wildcard is a DNS routing rule only. An application needs its own
+Flux-managed Kubernetes `Ingress` before its hostname is routed by Traefik.
 
 ## Install on `homelab`
 
