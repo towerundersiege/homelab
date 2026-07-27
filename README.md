@@ -28,6 +28,7 @@ The verified pre-reinstall archive remains on the media disk at
 apps/                  Application namespaces and releases
 clusters/homelab/      Flux entry point and reconciliation order
 infrastructure/        Cluster-wide controllers and configuration
+systemd/               Minimal tracked host boot configuration
 docs/                  Installation, recovery, and bootstrap runbooks
 scripts/               Explicit host bootstrap helpers
 compose/               Legacy Compose manifests retained for migration reference
@@ -79,3 +80,7 @@ redundancy. When a second DAS disk is added, name it `archfiend` and use it as
 SnapRAID parity before considering the pool protected. The future internal 2–4
 TB disk is intended to become the active/portable tier; the DAS remains bulk
 archive storage.
+
+Application state is separate from media: Flux configures the retained
+`homelab-local` StorageClass under `/srv/operational` on the NVMe. See
+[the Kubernetes storage runbook](docs/kubernetes-storage.md).

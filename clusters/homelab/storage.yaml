@@ -1,22 +1,17 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: apps
+  name: storage
   namespace: flux-system
 spec:
   dependsOn:
-    - name: networking
-    - name: storage
+    - name: infrastructure
   interval: 10m
   retryInterval: 1m
-  path: ./apps
+  path: ./infrastructure/storage
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
-  decryption:
-    provider: sops
-    secretRef:
-      name: sops-age
   wait: true
-  timeout: 10m
+  timeout: 5m

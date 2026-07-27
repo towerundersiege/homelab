@@ -121,7 +121,8 @@ They must be able to recover independently after a failed cluster startup.
    SMART/SnapRAID jobs when parity storage exists; do not treat current
    one-disk `crimson` as protected storage.
 4. **Foundation:** configure Tailscale, host Pi-hole, K3s, Cilium, Flux, SOPS,
-   private certificates, the shared Gateway, and Cloudflare Tunnel.
+   local persistent storage, private certificates, the shared Gateway, and
+   Cloudflare Tunnel.
 5. **Applications:** deploy and restore Jellyfin first, then Navidrome, Forgejo,
    Homepage, Headlamp, Uptime Kuma, ntfy, and optional Forgejo runner.
 6. **Validation:** reboot the host; recreate application pods; validate LAN DNS,
@@ -153,6 +154,10 @@ They must be able to recover independently after a failed cluster startup.
   `.101`, and sends the `home.rpca.uk` wildcard to the Cilium Gateway at
   `.102`. Its all-interface listener requires that no WAN DNS port-forward is
   ever configured. Configure router DHCP DNS only after this verification.
+- **2026-07-27:** Kubernetes storage foundation is defined in Git: new
+  application PVCs use the retained `homelab-local` StorageClass under
+  `/srv/operational/k3s/local-path` on the NVMe. Run the tracked host tmpfiles
+  bootstrap before creating the first PVC.
 
 ## Current migration source
 
