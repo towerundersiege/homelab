@@ -47,6 +47,8 @@ creates the proxied DNS records automatically.
 
 These origins are Kubernetes Services reached only by the cloudflared pod;
 they do not expose new LAN ports. Cloudflare provides public HTTPS at the edge.
+The host network blocks outbound QUIC, so the connector is intentionally pinned
+to Cloudflare Tunnel's supported HTTP/2 transport over TCP instead.
 
 Verify from a network outside the LAN/Tailscale:
 
