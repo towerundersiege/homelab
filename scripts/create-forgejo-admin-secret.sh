@@ -40,7 +40,8 @@ kubectl -n forgejo create secret generic forgejo-admin \
   --from-literal=password="$password" \
   --dry-run=client -o yaml | \
   sops --config "$repo_root/.sops.yaml" --encrypt \
-    --input-type yaml --output-type yaml /dev/stdin > "$output"
+    --input-type yaml --output-type yaml --filename-override "$output" \
+    /dev/stdin > "$output"
 
 unset password
 
