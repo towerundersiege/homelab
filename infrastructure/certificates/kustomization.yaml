@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - cert-manager.yaml
   - cloudflare-dns-api-token.sops.yaml
+  - letsencrypt-cloudflare.yaml

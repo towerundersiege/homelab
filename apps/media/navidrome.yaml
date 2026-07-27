@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-data
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: homelab-local
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: navidrome
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: navidrome
+    spec:
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: restore-metadata
+          image: rancher/mirrored-library-busybox:1.37.0
+          command:
+            - sh
+            - -ec
+            - |
+              marker=/data/.homelab-metadata-restored
+              if [ -e "$marker" ]; then
+                exit 0
+              fi
+              tar -xzf /archive/homelab-migration/pre-debian-20260726-verified/penzance-state.tar.gz \
+                -C /data --strip-components=5 var/lib/penzance/config/navidrome
+              chown -R 1001:1001 /data
+              touch "$marker"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: media
+              mountPath: /archive
+              readOnly: true
+      containers:
+        - name: navidrome
+          image: deluan/navidrome:0.62.0
+          env:
+            - name: ND_LOGLEVEL
+              value: info
+            - name: ND_SESSIONTIMEOUT
+              value: 24h
+            - name: ND_SCANSCHEDULE
+              value: 1h
+            - name: ND_ENABLEWEBPENCODING
+              value: "true"
+            - name: ND_MUSICFOLDER
+              value: /music
+            - name: ND_DATAFOLDER
+              value: /data
+            - name: ND_CONFIGFILE
+              value: /data/navidrome.toml
+            - name: TZ
+              value: Europe/London
+          ports:
+            - name: http
+              containerPort: 4533
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: media
+              mountPath: /music
+              subPath: music
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: navidrome-data
+        - name: media
+          hostPath:
+            path: /mnt/crimson/media
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome
+  namespace: media
+spec:
+  selector:
+    app.kubernetes.io/name: navidrome
+  ports:
+    - name: http
+      port: 4533
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: navidrome
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - navidrome.home.rpca.uk
+        - navidrom.home.rpca.uk
+      secretName: media-home-rpca-uk-tls
+  rules:
+    - host: navidrome.home.rpca.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: navidrome
+                port:
+                  name: http
+    - host: navidrom.home.rpca.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: navidrome
+                port:
+                  name: http

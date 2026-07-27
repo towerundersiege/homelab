@@ -1,9 +1,8 @@
 # Internal TLS
 
-Private application names under `home.rpca.uk` use a publicly trusted
-Let's Encrypt wildcard certificate. Validation uses Cloudflare DNS-01, so no
-application is made public and Pi-hole remains the only DNS authority on the
-LAN.
+Private application names under `home.rpca.uk` use publicly trusted Let's
+Encrypt certificates. Validation uses Cloudflare DNS-01, so no application is
+made public and Pi-hole remains the only DNS authority on the LAN.
 
 ## One-time Cloudflare token
 
@@ -26,6 +25,16 @@ git commit -m 'Add Cloudflare DNS credential'
 git push
 ```
 
-The next GitOps change adds a `ClusterIssuer` and requests
-`*.home.rpca.uk`. DNS-01 creates short-lived `_acme-challenge` TXT records in
-Cloudflare; it does not add public A/AAAA records for private services.
+GitOps defines the `letsencrypt-cloudflare` `ClusterIssuer` and requests
+named certificates for the private applications. DNS-01 creates short-lived
+`_acme-challenge` TXT records in Cloudflare; it does not add public A/AAAA
+records for private services.
+
+Verify issued certificates and HTTPS from the Mac:
+
+```sh
+kubectl --kubeconfig ~/.config/kube/homelab.yaml get certificate -A
+curl -I https://forgejo.home.rpca.uk/
+curl -I https://jellyfin.home.rpca.uk/
+curl -I https://navidrome.home.rpca.uk/
+```

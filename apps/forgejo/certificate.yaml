@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: forgejo-home-rpca-uk
+  namespace: forgejo
+spec:
+  secretName: forgejo-home-rpca-uk-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-cloudflare
+  dnsNames:
+    - forgejo.home.rpca.uk

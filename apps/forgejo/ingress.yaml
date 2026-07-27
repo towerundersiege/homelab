@@ -5,6 +5,10 @@ metadata:
   namespace: forgejo
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - forgejo.home.rpca.uk
+      secretName: forgejo-home-rpca-uk-tls
   rules:
     - host: forgejo.home.rpca.uk
       http:
