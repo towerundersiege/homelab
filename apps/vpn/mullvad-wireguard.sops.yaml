@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+    wg0.conf: ENC[AES256_GCM,data:VUg87yhtm36K0Fct0O/1CTT77YunHA6aHIk5lfIBwsMy3HbCtwWk8A8eMRoLCti+cwI7ezJk9n7XEd3QXSF/2/RNSjdo4gkq6c1uHKJTSxE948xMNk8Qnx2mMW0B84vikupjwnYvdMvXGVsDFX97mero10DYgMRYCzRVnsdXfD483BQAT4JKteHLqvMKoAPvvdHce5ftJouHXJApxMeUE/OWEaB6HSKcrrMPiylhAq+sRC+k1mECCA3IZJc4/cVN1h00lH/kk16/O9KDmHs6hq3WH9zJMiS6DMELUqKxMP9v7/oPgOKjOzv4AP3xiyB20ZNWxs0KoWEI8daygHLjVOavkob+Mt839SSbJ+yJQbLJuN542OCw12ouqh/1Fl+t6phncturKUallLtUOUjVf7SRQ2+MqmBHtipTMiHpB/UpxS7UCxpTZua2BF47ShYT+FHm0yACDsNiiUmZ5/hHAMgxG1/ukFqUGwWAYUuGPSyCVsdE8Bzj5JB+ziCF7k7FVEufdg==,iv:mUwicKMtPNz4k8vGJ+wlVLSpCsedGeWaxk75a6yxmh8=,tag:ZTyWYXYDGLOtuxZcBGdL/w==,type:str]
+kind: Secret
+metadata:
+    name: mullvad-wireguard
+    namespace: vpn
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJM0c4eDVnczZVWVl1UVJF
+            cTV5WCtKRE82NzBZT2tlcVlnbUNRd2cwdFY0CkZuTVF2cGcwcEpES0hPb2ozWEc4
+            SENlZ2ZhTGVtTFM2UkxlUUs1QzlVaXcKLS0tIEljMEMyVTVNTXI5RE0zaEs2QVRo
+            dDNucmNXYkVhQjVHeFMyMVZlSDJ3WDAKTDkTgsnzV4rZ6MOjn9NAoA3uA73u4ky+
+            iUtsISvy6mASAWJdvWn/vH6EzooDAegVZZE6Pxje8sOojb0gQDiO2g==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ffc88at5xypvz3970h8ff9rcn7ddy9r5ey602xqf7sjm7dmzuqds33xm9k
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-27T20:10:38Z"
+    mac: ENC[AES256_GCM,data:0TKIrQvjeq49gyU3HzK3qHvreL49GIW4CFFfmDVH6om3xZzoEtDAhX93QDH4Mls9Bv30ItdXixFnuohr2F2wVy2Ec2ghkErlYIkEhJwaTE09uQeofmk1KarFKabssWLNr1/uD1hPFn407suLVaqqwLS/HGu4ukK7vfzpkvPCsVI=,iv:TYCqoTKh7nJ2gvkP9mITGkDVUeJ+1IbcBcG12n67Jws=,tag:5vjHG+LkWSiq2LUpoPQFzg==,type:str]
+    version: 3.13.3
