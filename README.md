@@ -75,6 +75,9 @@ Git commits. Do not deploy long-lived applications directly with `kubectl`.
   `music.rpca.uk` (Navidrome). Everything else remains LAN/Tailscale-only.
   Follow [the Cloudflare Tunnel runbook](docs/cloudflare-tunnel.md) to create
   the encrypted connector credential and the two dashboard routes.
+- VPN-required future workloads use a Gluetun sidecar with Mullvad WireGuard;
+  see [the Gluetun runbook](docs/gluetun-mullvad.md). It does not alter current
+  service networking.
 
 ## Storage model
 

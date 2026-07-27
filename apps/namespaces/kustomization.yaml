@@ -4,3 +4,4 @@ resources:
   - media.yaml
   - forgejo.yaml
   - observability.yaml
+  - vpn.yaml

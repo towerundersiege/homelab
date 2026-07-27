@@ -52,6 +52,10 @@ public media services reachable.
   reboots. Renovate opens weekly update PRs for K3s, Cilium, Flux, Helm charts,
   and images; patch/digest PRs may auto-merge after checks, while minor/major
   updates are reviewed. Flux applies merged changes.
+- **VPN egress:** Gluetun with a dedicated Mullvad WireGuard configuration is
+  opt-in per workload. A VPN-bound application shares Gluetun's Pod network
+  namespace and kill-switch; it is never a default route for the host or
+  existing LAN/public services.
 - **Operations:** Keep monitoring lightweight: Homepage for links, Headlamp for
   Kubernetes inspection, Uptime Kuma for availability checks, ntfy for alerts,
   and Hubble for Cilium networking. Do not install Grafana/Prometheus or
