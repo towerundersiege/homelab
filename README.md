@@ -73,6 +73,8 @@ Git commits. Do not deploy long-lived applications directly with `kubectl`.
   private application names such as `forgejo.home.rpca.uk`.
 - Cloudflare Tunnel will expose only `media.rpca.uk` (Jellyfin) and
   `music.rpca.uk` (Navidrome). Everything else remains LAN/Tailscale-only.
+  Follow [the Cloudflare Tunnel runbook](docs/cloudflare-tunnel.md) to create
+  the encrypted connector credential and the two dashboard routes.
 
 ## Storage model
 

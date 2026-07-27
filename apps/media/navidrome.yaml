@@ -134,20 +134,9 @@ spec:
   tls:
     - hosts:
         - navidrome.home.rpca.uk
-        - navidrom.home.rpca.uk
       secretName: media-home-rpca-uk-tls
   rules:
     - host: navidrome.home.rpca.uk
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: navidrome
-                port:
-                  name: http
-    - host: navidrom.home.rpca.uk
       http:
         paths:
           - path: /

@@ -165,8 +165,7 @@ They must be able to recover independently after a failed cluster startup.
 - **2026-07-27:** Jellyfin and Navidrome are restored from the verified
   Penzance archive into retained NVMe-backed PVCs. They serve the retained
   media pool read-only at `https://jellyfin.home.rpca.uk` and
-  `https://navidrome.home.rpca.uk`; `https://navidrom.home.rpca.uk` is an
-  intentional compatibility alias.
+  `https://navidrome.home.rpca.uk`.
 
 ## Current migration source
 
