@@ -1,0 +1,25 @@
+apiVersion: v1
+data:
+    db-name: ENC[AES256_GCM,data:Cj0eOnrMeHpmkK0S,iv:izLt8CE7q9YCYiF8tLsHF+jguCdjVSHSL+qgSpKGHXE=,tag:3v+m8rWjY9+WrMQW10p+FA==,type:str]
+    db-password: ENC[AES256_GCM,data:j5e0sXP67HpDV/cRjhKsZRX+Yp9x+DZu62amEPDP/oGYZ3X5gHShSleKsIG2d1Sb+/dCrgalq8q6Mp/KQWI9DQ==,iv:v1BEVP99M/JpIZ8ctzjnKYQZ+gdyrp/JfDOkmHJQV9A=,tag:uNZ+dqeLhaw2Swb3JHL6Qg==,type:str]
+    db-root-password: ENC[AES256_GCM,data:UZcuOzI8IXjor+AlRVaRan9erEL176i1VEr8sBKXNKs4syDbJ90hq46sEiOGRHUXDjA7t2CeoQc+ognYUivd2A==,iv:QGUAz5DWMnrRDtJvu6Dk5PRQoQhuBoZeXumEZDxFG/E=,tag:YNHRoceVlwLNAN31yGjRLQ==,type:str]
+    db-user: ENC[AES256_GCM,data:5ZimTguHAcDmwMjB,iv:GKwjassVbDI5Ilx0ijIPTq2dp46J/sOyaIE1tL1ncNQ=,tag:j7kZDgQhPpIMZsU5MGZxuw==,type:str]
+kind: Secret
+metadata:
+    name: database
+    namespace: londonkerry
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA2OHYyUDUxQndiM2NtVTNT
+            MnhXMzQyZjBzOHNTWENmQW1hclNjM2l5ajNNCm90bUgxZ2NBWDJWbzRuR2tZemxy
+            WVJaLzRlM3g1aENiUGtZL05qTVpSSmMKLS0tIExIWngzMCtMRU0xVHRKUTJTUHFv
+            cDlyUFJGNGpkd29BeTdBRS9qK0ErTTAKJgnJMhDamnsiVNltp8XYovDDg8oTDao6
+            RIqqNJSlrIYJfECBWJqUVZ9JBwNrWY7MSHGtcd48bCUemu4CowBCdg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ffc88at5xypvz3970h8ff9rcn7ddy9r5ey602xqf7sjm7dmzuqds33xm9k
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-01T14:16:20Z"
+    mac: ENC[AES256_GCM,data:+BLj2ydI2CJK+MobY2ulyfTupMVr1C3gBqQapcMYVMW6YLlWz6kUJeuUJiSnXDFTmURdAHL2UxPuzie+yJaU/XWP8RgSaRgUpJdqVS57LTGh2lQIGhqbPlANbOw2I6XOnxx4CHidpFMt5MQhdq9eJPYTZLg6r6Tb/Tdfm9IJcz0=,iv:Rt764sH8Tj0Xq8WngYR7c6QvNVSK5ABj2PnfUtjIPog=,tag:YVqaIZivYn7wANIcxLuypA==,type:str]
+    version: 3.13.3
