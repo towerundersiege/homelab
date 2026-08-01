@@ -155,14 +155,12 @@ spec:
             - name: http
               containerPort: 80
           readinessProbe:
-            httpGet:
-              path: /wp-login.php
+            tcpSocket:
               port: http
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /wp-login.php
+            tcpSocket:
               port: http
             initialDelaySeconds: 60
             periodSeconds: 20
