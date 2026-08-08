@@ -1,0 +1,23 @@
+apiVersion: v1
+data:
+    .dockerconfigjson: ENC[AES256_GCM,data:pAhjI8QUtj0MjVE0qZclEQQkhoZoJmq/79ntSfYsbbG1hgR3W5g0ROzf7Y6FBzEbtxKL29vHmF+9gHSqhAHHa/MaAqfF2zwDA68R3lu32eO285rv55+9C9PQNyorT8SgnHlWhBiMEg8A45CyNYarhLOae75AxMzIZi4BMNfnYe1LMZ9r4k7BV/8zHVBJyrs8Q6MXjw3D/DTmZHe+yzk0hFGP6DqsksojXfWQiI1F2mpanj/1HfFuOhb79KLBbRZBLwOZdT5Ec/SVjmnzDJv7ENWFYWWQayhwAoXYD46ZUY+k5yrTX8r3M+mF58ud+UXH,iv:HUVrVv+dfBWYXQEZ2CCquTofM42t8A+xQH+69axmOq0=,tag:houppbcxPxw+TRkxyVh6WQ==,type:str]
+kind: Secret
+metadata:
+    name: isambard-registry
+    namespace: media
+type: kubernetes.io/dockerconfigjson
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoL2xxNWZ3d29UU2JMdmNN
+            RWhpdmtEaytLOFJCeVZWOTR0SlcrTHdjRlU4CjZORlBFaWJrbk53Q3RUMTBKaTNw
+            UUI4eHdCZE9kQm9XK2pPaEgwSTNwaTQKLS0tIHJnZVAwNEdLZXVIejBpTTliMnh0
+            YnFkZkR2Wld0VFlrOGlkTXlOYk5nWmMK5NQfWs397bqgDo2Hy4PPQHrRHexmhYKJ
+            nfxeJPO3i8QHBXnCkctNdCo3lgBLry4nMDZzn0GwtzPSuTo6ngEroQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ffc88at5xypvz3970h8ff9rcn7ddy9r5ey602xqf7sjm7dmzuqds33xm9k
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-08T11:56:23Z"
+    mac: ENC[AES256_GCM,data:ZIqJGaA4rCfSB30EI+n4j2gZ+osm6TQ9ZcEKSEzJHSyhWPuVtgfVjDIeGfFVCi2Dv+IXJ6WWJTVU4ONNkXTuxbP8sZa6xsx9xj7n1m/45XayLWHqmRYpPNrYWhBpSBER535sKOpBK4hR4bv8H7gDSJePuas8Dbe0fp6h1mjQIlQ=,iv:pgqcOp6Ge9pGN/u3n5kbEOXWbk+t2pa2LBxSPf1PjQI=,tag:jWvPOy/9ZQKCGDSga6+whA==,type:str]
+    version: 3.13.3
