@@ -22,7 +22,7 @@ spec:
   chart:
     spec:
       chart: isambard
-      version: 0.1.20
+      version: 0.1.22
       sourceRef:
         kind: HelmRepository
         name: isambard
@@ -38,7 +38,7 @@ spec:
     fullnameOverride: isambard
     image:
       repository: forgejo.home.rpca.uk/ryan/isambard
-      tag: v0.1.20
+      tag: v0.1.22
       pullSecrets:
         - name: isambard-registry
     ingress:
@@ -56,3 +56,5 @@ spec:
       youtubeDir: /media/youtube
     youtube:
       cookiesSecret: isambard-youtube-cookies
+      poTokenProvider:
+        enabled: true
