@@ -100,7 +100,7 @@ spec:
               mountPath: /data
             - name: media
               mountPath: /music
-              subPath: music
+              subPath: music/users/ryan
               readOnly: true
       volumes:
         - name: data
