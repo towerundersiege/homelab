@@ -48,7 +48,7 @@ spec:
       config:
         server:
           DOMAIN: forgejo.home.rpca.uk
-          ROOT_URL: http://forgejo.home.rpca.uk/
+          ROOT_URL: https://forgejo.home.rpca.uk/
         service:
           DISABLE_REGISTRATION: true
           REQUIRE_SIGNIN_VIEW: true
