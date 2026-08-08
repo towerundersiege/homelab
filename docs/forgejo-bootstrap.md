@@ -52,7 +52,7 @@ follow-up work; do not expose Forgejo publicly.
 The private `ryan/isambard` repository publishes its image and Helm chart to
 this registry when the `v0.1.0` tag is pushed. Create a Forgejo access token
 with package read/write scope, add it to the repository as the
-`FORGEJO_TOKEN` Action secret, then create the encrypted in-cluster read
+`ISAMBARD_PUBLISH` Action secret, then create the encrypted in-cluster read
 credential:
 
 ```sh
