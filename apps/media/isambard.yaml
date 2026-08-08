@@ -22,7 +22,7 @@ spec:
   chart:
     spec:
       chart: isambard
-      version: 0.1.14
+      version: 0.1.15
       sourceRef:
         kind: HelmRepository
         name: isambard
@@ -38,7 +38,7 @@ spec:
     fullnameOverride: isambard
     image:
       repository: forgejo.home.rpca.uk/ryan/isambard
-      tag: v0.1.14
+      tag: v0.1.15
       pullSecrets:
         - name: isambard-registry
     ingress:
