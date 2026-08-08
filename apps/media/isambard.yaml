@@ -1,13 +1,12 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: OCIRepository
+kind: HelmRepository
 metadata:
   name: isambard
   namespace: media
 spec:
   interval: 10m
-  url: oci://forgejo.home.rpca.uk/ryan/charts/isambard
-  ref:
-    semver: ">=0.1.0 <0.2.0"
+  type: oci
+  url: oci://forgejo.home.rpca.uk/ryan/charts
   secretRef:
     name: isambard-registry
 ---
@@ -23,8 +22,9 @@ spec:
   chart:
     spec:
       chart: isambard
+      version: 0.1.0
       sourceRef:
-        kind: OCIRepository
+        kind: HelmRepository
         name: isambard
         namespace: media
       interval: 10m
