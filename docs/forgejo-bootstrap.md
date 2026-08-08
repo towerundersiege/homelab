@@ -47,5 +47,25 @@ uses the same host (for example, `forgejo.home.rpca.uk/<owner>/<image>` for
 OCI images). TLS and the final Tailscale remote application path are separate
 follow-up work; do not expose Forgejo publicly.
 
+## Isambard packages
+
+The private `ryan/isambard` repository publishes its image and Helm chart to
+this registry when the `v0.1.0` tag is pushed. Create a Forgejo access token
+with package read/write scope, add it to the repository as the
+`FORGEJO_TOKEN` Action secret, then create the encrypted in-cluster read
+credential:
+
+```sh
+./scripts/create-isambard-registry-secret.sh
+git add apps/media/isambard-registry.sops.yaml
+sed -i.bak '/  - certificate.yaml/a\  - isambard-registry.sops.yaml' apps/media/kustomization.yaml
+rm apps/media/kustomization.yaml.bak
+git commit -m "Add Isambard registry pull credential"
+git push
+```
+
+The secret is used only inside the `media` namespace by Flux to pull the Helm
+chart and by the Isambard workload to pull its private image.
+
 Use the GitHub repository for cluster source until Forgejo is installed,
 backed up, and optionally configured as a mirror. It is not a Flux dependency.

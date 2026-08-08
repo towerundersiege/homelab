@@ -1,0 +1,56 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: isambard
+  namespace: media
+spec:
+  interval: 10m
+  url: oci://forgejo.home.rpca.uk/ryan/charts/isambard
+  ref:
+    semver: ">=0.1.0 <0.2.0"
+  secretRef:
+    name: isambard-registry
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: isambard
+  namespace: media
+spec:
+  interval: 10m
+  timeout: 10m
+  releaseName: isambard
+  chart:
+    spec:
+      chart: isambard
+      sourceRef:
+        kind: OCIRepository
+        name: isambard
+        namespace: media
+      interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    fullnameOverride: isambard
+    image:
+      repository: forgejo.home.rpca.uk/ryan/isambard
+      tag: v0.1.0
+      pullSecrets:
+        - name: isambard-registry
+    ingress:
+      host: isambard.home.rpca.uk
+      tls:
+        secretName: media-home-rpca-uk-tls
+    persistence:
+      storageClass: homelab-local
+      size: 10Gi
+    media:
+      hostPath: /mnt/crimson/media
+      musicDir: /media/music
+      moviesDir: /media/movies
+      tvDir: /media/tv
+      youtubeDir: /media/youtube

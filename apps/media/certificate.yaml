@@ -9,5 +9,6 @@ spec:
     kind: ClusterIssuer
     name: letsencrypt-cloudflare
   dnsNames:
+    - isambard.home.rpca.uk
     - jellyfin.home.rpca.uk
     - navidrome.home.rpca.uk
