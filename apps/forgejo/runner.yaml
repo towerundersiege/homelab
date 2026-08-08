@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homelab-builder
+  namespace: forgejo
+  labels:
+    app.kubernetes.io/name: forgejo-runner
+    app.kubernetes.io/instance: homelab-builder
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forgejo-runner
+      app.kubernetes.io/instance: homelab-builder
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: forgejo-runner
+        app.kubernetes.io/instance: homelab-builder
+    spec:
+      initContainers:
+        - name: write-config
+          image: rancher/mirrored-library-busybox:1.37.0
+          command:
+            - sh
+            - -ec
+            - |
+              cat > /config/runner.yml <<EOF
+              server:
+                connections:
+                  forgejo:
+                    url: ${FORGEJO_URL}
+                    uuid: ${FORGEJO_UUID}
+                    token: ${FORGEJO_TOKEN}
+              runner:
+                capacity: 1
+                labels:
+                  - docker:docker://ghcr.io/catthehacker/ubuntu:act-22.04
+              EOF
+              chown 1000:1000 /config/runner.yml
+          env:
+            - name: FORGEJO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-builder
+                  key: url
+            - name: FORGEJO_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-builder
+                  key: uuid
+            - name: FORGEJO_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-builder
+                  key: token
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        # The runner is restricted in Forgejo to ryan's repositories. Docker is
+        # isolated to this pod; no host Docker socket is exposed.
+        - name: docker
+          image: docker:27-dind
+          args: ["dockerd", "--host=tcp://0.0.0.0:2375", "--tls=false"]
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+        - name: runner
+          image: data.forgejo.org/forgejo/runner:13
+          command: ["forgejo-runner", "daemon", "--config", "/config/runner.yml"]
+          env:
+            - name: DOCKER_HOST
+              value: tcp://127.0.0.1:2375
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: work
+              mountPath: /data
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: work
+          emptyDir: {}
