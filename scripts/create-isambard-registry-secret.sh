@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 output="$repo_root/apps/media/isambard-registry.sops.yaml"
+kustomization="$repo_root/apps/media/kustomization.yaml"
 
 for command in kubectl sops; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -33,5 +34,17 @@ kubectl -n media create secret docker-registry isambard-registry \
     /dev/stdin > "$output"
 unset token
 
+# Keep the secret in Flux's declared source of truth. This is intentionally
+# done only after encryption succeeds, so a failed prompt never leaves the
+# kustomization referring to a missing file.
+if ! grep -Fqx '  - isambard-registry.sops.yaml' "$kustomization"; then
+  temporary=$(mktemp "${kustomization}.XXXXXX")
+  awk '
+    /  - certificate.yaml/ { print; print "  - isambard-registry.sops.yaml"; next }
+    { print }
+  ' "$kustomization" > "$temporary"
+  mv "$temporary" "$kustomization"
+fi
+
 echo "Wrote encrypted secret: $output"
-echo "Commit it; Flux will provide it to the OCI chart source and Isambard pod."
+echo "Registered it in apps/media/kustomization.yaml. Commit both files; Flux will provide it to the OCI chart source and Isambard pod."

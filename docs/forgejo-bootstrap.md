@@ -57,9 +57,7 @@ credential:
 
 ```sh
 ./scripts/create-isambard-registry-secret.sh
-git add apps/media/isambard-registry.sops.yaml
-sed -i.bak '/  - certificate.yaml/a\  - isambard-registry.sops.yaml' apps/media/kustomization.yaml
-rm apps/media/kustomization.yaml.bak
+git add apps/media/isambard-registry.sops.yaml apps/media/kustomization.yaml
 git commit -m "Add Isambard registry pull credential"
 git push
 ```
