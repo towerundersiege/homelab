@@ -1,0 +1,24 @@
+apiVersion: v1
+data:
+    token: ENC[AES256_GCM,data:aYnvkesKR915m1c5q5jFdOoS7UYIs7G1Vpt7fTtBegUSf5gzIXmoYTa/CsxgKEUjoHaCNNk95jM=,iv:Grcq3ZcNdHBD1JuHS+iimETNGUnoJyzE7p8Urjy/3+w=,tag:BdGoKoA8aJPTZ+I1scXOTg==,type:str]
+    url: ENC[AES256_GCM,data:Gde/RmqGzCIJGtWnoQ/+u1B9c+2ibp76NqtKxeknt1YBDlUqMo+gVQ==,iv:l94JeXmVWshSvTiOEpq8hQJrMxCAq/Utya8OVJTBWKk=,tag:pefu5Mr593vDSEd2C/qALA==,type:str]
+    uuid: ENC[AES256_GCM,data:oMOdlSH/Ag/22fierECuHidGJR1d5JmjxhAC6Yz5eN/4vcHZLUjIzM8RdkGiTWpC,iv:lzZxPjRa7vFNKn2NURhz9HJZzdaFIWVr9iRKPBGEfkU=,tag:/cSsTsysITsB/cCcW+8iOQ==,type:str]
+kind: Secret
+metadata:
+    name: homelab-builder
+    namespace: forgejo
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBxMytRZ1ZLNHNqWmJmWm1x
+            ZHpldkRhUkNYL29LVzZqa3F5VGNKNUJwTGhrCi9OVFY4eTNZZmhmc29yOTFkTG9T
+            Nkhnbi9pWVRvdC9uYWdPWUYya2hwWk0KLS0tIGVvS2E5c1NEMHRiKy9ZTXZVTnZv
+            Ry9CcHI0eFoyU2ZrN1R5YkowRXBRZGsK5ijZCx567lNQnBtXCV5UlhDi1F7VALx8
+            iYrHZqifAC85Dv8XB+8YS1HZj8MNr4SpCMOJ0u/ttBkyvp+UOQZAbA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ffc88at5xypvz3970h8ff9rcn7ddy9r5ey602xqf7sjm7dmzuqds33xm9k
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-08T12:20:22Z"
+    mac: ENC[AES256_GCM,data:wpY+ehnFa4e6HBy44QKk8lJUK71oJlwc300jE80gjABk5QbA6DnDBJBmKbrGPF3MqvTh7QHmaM3MuAH44MWc40NH2cTmSzX6kKUkoTdrUgFAXbnJJ4hCoKg5tp+excSE/AhWuKmz4HA9fQVtdlXQfd2DwmBJ6g5m7E9QWKbkj9E=,iv:r2AsEODeVTDTnqhilX7RjnJ0CcH9nj9h2iiYXMvuA5Q=,tag:XcMSlGUmlydrXTHaNgPmIw==,type:str]
+    version: 3.13.3
