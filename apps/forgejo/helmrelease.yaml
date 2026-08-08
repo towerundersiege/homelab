@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: forgejo
-      version: 17.1.3
+      version: 17.1.4
       interval: 24h
       sourceRef:
         kind: HelmRepository
@@ -22,6 +22,11 @@ spec:
     remediation:
       retries: 3
   values:
+    # Forgejo 16 exposes the Actions job-log API used by the local Codex
+    # connector. The Helm chart's appVersion remains on Forgejo 15, so pin the
+    # supported rootless image explicitly.
+    image:
+      tag: "16.0.2"
     strategy:
       type: Recreate
     test:
